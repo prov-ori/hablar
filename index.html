@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>¡Hablar! — испанский язык</title>
+  <meta name="description" content="Интерактивная платформа для изучения испанского: уроки, тренажёр глаголов, интервальное повторение, чтение, диалоги и игры.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇪🇸</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <button class="skip-link" type="button" onclick="document.getElementById('main').focus()">К содержимому</button>
+  <header class="topbar">
+    <a class="logo" href="#/"><span class="logo-mark">¡</span>Hablar<span class="logo-mark">!</span></a>
+    <div class="header-stats" id="header-stats"></div>
+    <button class="icon-btn" id="theme-toggle" type="button" title="Сменить тему" aria-label="Сменить тему">🌓</button>
+  </header>
+  <div class="layout">
+    <nav class="nav" id="nav" aria-label="Разделы"></nav>
+    <main id="main" tabindex="-1"></main>
+  </div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <noscript><p style="padding:2rem">Для работы платформы нужен JavaScript.</p></noscript>
+
+  <script src="js/util.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/data/vocab.js"></script>
+  <script src="js/data/verbs.js"></script>
+  <script src="js/data/grammar.js"></script>
+  <script src="js/data/stories.js"></script>
+  <script src="js/data/dialogues.js"></script>
+  <script src="js/data/culture.js"></script>
+  <script src="js/exercises.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/views/learn.js"></script>
+  <script src="js/views/words.js"></script>
+  <script src="js/views/verbs.js"></script>
+  <script src="js/views/content.js"></script>
+  <script src="js/views/games.js"></script>
+  <script src="js/views/profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#2b1812; --paper:#fff6ea; --terra:#c8432f; --terra-deep:#8f2a1b; --saffron:#f2b42b; --olive:#2f8f5b; }
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1200px; height: 630px; overflow: hidden; font-family: 'Nunito', system-ui, sans-serif; color: var(--paper);
+    background: radial-gradient(900px 600px at 85% 0%, #e0674a 0%, transparent 60%), linear-gradient(135deg, var(--terra) 0%, var(--terra-deep) 100%);
+    position: relative; }
+  .grain { position:absolute; inset:0; background-image: radial-gradient(rgba(255,255,255,.07) 1.5px, transparent 1.6px); background-size: 26px 26px; }
+  .left { position:absolute; left:84px; top:0; bottom:0; width:640px; display:flex; flex-direction:column; justify-content:center; gap:30px; }
+  .logo { font-weight: 900; font-size: 160px; line-height: .95; letter-spacing: -5px; display:flex; align-items: baseline; }
+  .logo i { font-style: normal; color: var(--saffron); }
+  .tag { font-size: 40px; font-weight: 800; line-height: 1.2; max-width: 600px; }
+  .chips { display:flex; gap:14px; flex-wrap:wrap; }
+  .chip { background: rgba(255,246,234,.14); border: 2px solid rgba(255,246,234,.35); border-radius: 999px; padding: 8px 22px; font-size: 26px; font-weight: 800; }
+  .right { position:absolute; right:64px; top:0; bottom:0; width:372px; display:flex; flex-direction:column; justify-content:center; gap:22px; }
+  .bubble { border-radius: 30px; padding: 20px 26px; font-size: 34px; font-weight: 900; box-shadow: 0 14px 0 rgba(0,0,0,.18); }
+  .b1 { background: var(--paper); color: var(--ink); border-bottom-left-radius: 8px; align-self: flex-start; transform: rotate(-3deg); }
+  .b2 { background: var(--saffron); color: var(--ink); border-bottom-right-radius: 8px; align-self: flex-end; transform: rotate(2deg); }
+  .b3 { background: var(--olive); color: #fff; border-bottom-left-radius: 8px; align-self: flex-start; transform: rotate(-1.5deg); }
+  .small { display:block; font-size: 22px; font-weight: 700; opacity: .7; margin-top: 4px; }
+  .flag { position:absolute; left:84px; top:56px; font-size: 22px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; opacity:.8; }
+</style></head>
+<body><div class="grain"></div>
+<div class="flag">Испанский язык · A1–B1</div>
+<div class="left">
+  <div class="logo"><i>¡</i>Hablar<i>!</i></div>
+  <div class="tag">Учите испанский: уроки, глаголы, чтение и игры</div>
+  <div class="chips"><span class="chip">784 слова</span><span class="chip">74 глагола</span><span class="chip">11 игр</span></div>
+</div>
+<div class="right">
+  <div class="bubble b1">¿Cómo estás?<span class="small">Как дела?</span></div>
+  <div class="bubble b2">¡Muy bien, gracias!<span class="small">Очень хорошо, спасибо!</span></div>
+  <div class="bubble b3">¡Vamos a hablar!<span class="small">Давай поговорим!</span></div>
+</div>
+</body></html>

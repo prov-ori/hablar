@@ -56,3 +56,10 @@ tests/                модульные и браузерные тесты
 node tests/unit.test.js                         # спряжения (эталонные таблицы), числа, время, целостность данных
 NODE_PATH=$(npm root -g) node tests/smoke.test.js   # браузерный прогон всех экранов (нужен playwright)
 ```
+
+## Превью ссылки в соцсетях
+
+Мета-теги Open Graph/Twitter лежат в `index.html`, картинки — в `assets/` (`og-image.png` 1200×630, иконки, `icon.svg`).
+Исходник превью — `assets/og-source.html`; пересобрать: `NODE_PATH=$(npm root -g) node tools/render-og.js`.
+Адреса картинок в мета-тегах абсолютные (`https://prov-ori.github.io/hablar/…`): при переносе на другой домен их нужно заменить.
+Если соцсеть показывает старое превью, сбросьте кэш: Telegram — отправьте ссылку боту @WebpageBot, Facebook — Sharing Debugger, VK — https://vk.com/dev/pages.getPageInfo (или добавьте `?v=2` к ссылке).

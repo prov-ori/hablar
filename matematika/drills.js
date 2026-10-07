@@ -518,5 +518,82 @@
     const [qn, qd] = R.pick([[1, 2], [1, 3], [2, 3], [1, 4], [3, 4], [-1, 2], [-1, 3]]); const B = R.int(1, 9) * qd;
     return { q: 'Найдите сумму бесконечно убывающей прогрессии: $b_1 = ' + B + '$, $q = ' + R.frac(qn, qd) + '$.', a: B / (1 - qn / qd), show: '$' + R.frac(B * qd, qd - qn) + '$', sol: '$S = \\frac{' + B + '}{1 - (' + R.frac(qn, qd) + ')}$' };
   }, 'геометрическая прогрессия');
+  /* ——— Курс VI ——— */
+  const ANG = [[0, '0'], [30, '\\frac{\\pi}{6}'], [45, '\\frac{\\pi}{4}'], [60, '\\frac{\\pi}{3}'], [90, '\\frac{\\pi}{2}'], [120, '\\frac{2\\pi}{3}'], [135, '\\frac{3\\pi}{4}'], [150, '\\frac{5\\pi}{6}'], [180, '\\pi'], [210, '\\frac{7\\pi}{6}'], [225, '\\frac{5\\pi}{4}'], [240, '\\frac{4\\pi}{3}'], [270, '\\frac{3\\pi}{2}'], [300, '\\frac{5\\pi}{3}'], [315, '\\frac{7\\pi}{4}'], [330, '\\frac{11\\pi}{6}'], [360, '2\\pi']];
+  const exact = v => { const t = [[0, '0'], [0.5, '\\frac{1}{2}'], [Math.SQRT2 / 2, '\\frac{\\sqrt{2}}{2}'], [Math.sqrt(3) / 2, '\\frac{\\sqrt{3}}{2}'], [1, '1'], [Math.sqrt(3), '\\sqrt{3}'], [Math.sqrt(3) / 3, '\\frac{\\sqrt{3}}{3}']]; for (const [x, s] of t) { if (Math.abs(Math.abs(v) - x) < 1e-9) return (v < -1e-12 ? '-' : '') + s; } return PLATFORM.R.tn(PLATFORM.R.round(v, 4)); };
+  D(6, 'unitcircle', 'd-rad', '◜', 'Градусы и радианы', 'Перевод мер угла и длина дуги. Ответ можно с π: 3π/4.', ['Градусы → радианы', 'Радианы → градусы', 'Длина дуги'], (lv, R) => {
+    const [d, t] = R.pick(ANG.slice(1));
+    if (lv === 1) return { q: 'Запишите ' + d + '° в радианах.', a: d * Math.PI / 180, show: '$' + t + '$', sol: '$' + d + '° \\cdot \\frac{\\pi}{180°}$' };
+    if (lv === 2) return { q: 'Запишите $' + t + '$ в градусах.', a: d, unit: '°', kb: 'numeric', sol: '$\\pi = 180°$' };
+    const r = R.int(2, 12); return { q: 'Радиус ' + r + ' см, центральный угол $' + t + '$. Найдите длину дуги.', a: r * d * Math.PI / 180, tol: 0.006 * r * d * Math.PI / 180, show: '$' + R.frac(r * d, 180).replace(/^(\d+)$/, '$1') + '\\pi$', unit: 'см', sol: '$l = r\\alpha$' };
+  }, 'радиан градус');
+
+  D(6, 'unitcircle', 'd-unit', '⭕', 'Значения sin, cos, tan', 'Табличные значения для любых углов. Пишите с корнем: −√3/2.', ['Первая четверть', 'Все четверти', 'Радианы и отрицательные углы'], (lv, R) => {
+    const pool = lv === 1 ? ANG.slice(0, 5) : ANG; const [d, t] = R.pick(pool); const f = R.int(0, 2);
+    const rad = d * Math.PI / 180; const v = [Math.sin(rad), Math.cos(rad), Math.tan(rad)][f];
+    if (f === 2 && Math.abs(Math.cos(rad)) < 1e-9) return null;
+    const nm = ['\\sin', '\\cos', '\\tan'][f]; const neg = lv === 3 && R.int(0, 1);
+    const arg = lv === 3 ? (neg ? '\\left(-' + t + '\\right)' : t) : d + '°'; const val = neg ? (f === 1 ? v : -v) : v;
+    return { q: '$' + nm + ' ' + arg + ' = \;?$', a: R.round(val, 9), tol: 1e-4, show: '$' + exact(val) + '$', sol: lv > 1 ? 'Найдите точку на единичной окружности и определите знак по четверти.' : '' };
+  }, 'синус косинус значения');
+
+  D(6, 'trigformulas', 'd-trigid', '≡', 'Тригонометрические тождества', 'По одной функции найдите другую с учётом четверти.', ['Острый угол', 'Любая четверть', 'Двойной угол'], (lv, R) => {
+    const [p, q, h] = R.pick([[3, 4, 5], [5, 12, 13], [8, 15, 17], [7, 24, 25]]); const s0 = p / h, c0 = q / h;
+    if (lv === 1) return { q: '$\\sin\\alpha = ' + R.frac(p, h) + '$, $\\alpha$ — острый угол. Найдите $\\cos\\alpha$.', a: c0, show: '$' + R.frac(q, h) + '$', sol: '$\\cos\\alpha = \\sqrt{1 - ' + R.frac(p * p, h * h) + '}$' };
+    const quad = R.int(2, 4); const sx = quad === 2 ? -1 : quad === 3 ? -1 : 1, sy = quad === 4 ? -1 : quad === 3 ? -1 : 1; const qn = ['', 'I', 'II', 'III', 'IV'][quad];
+    if (lv === 2) { if (R.int(0, 1)) return { q: '$\\sin\\alpha = ' + R.frac(sy * p, h) + '$, $\\alpha$ в ' + qn + ' четверти. Найдите $\\cos\\alpha$.', a: sx * c0, show: '$' + R.frac(sx * q, h) + '$', sol: 'В ' + qn + ' четверти косинус ' + (sx > 0 ? 'положителен' : 'отрицателен') + '.' }; return { q: '$\\cos\\alpha = ' + R.frac(sx * q, h) + '$, $\\alpha$ в ' + qn + ' четверти. Найдите $\\tan\\alpha$.', a: sy * p / (sx * q), show: '$' + R.frac(sy * p, sx * q) + '$', sol: '$\\sin\\alpha = ' + R.frac(sy * p, h) + '$' }; }
+    return R.int(0, 1) ? { q: '$\\sin\\alpha = ' + R.frac(p, h) + '$, $\\cos\\alpha = ' + R.frac(q, h) + '$. Найдите $\\sin 2\\alpha$.', a: 2 * s0 * c0, show: '$' + R.frac(2 * p * q, h * h) + '$', sol: '$2\\sin\\alpha\\cos\\alpha$' } : { q: '$\\sin\\alpha = ' + R.frac(p, h) + '$, $\\cos\\alpha = ' + R.frac(q, h) + '$. Найдите $\\cos 2\\alpha$.', a: c0 * c0 - s0 * s0, show: '$' + R.frac(q * q - p * p, h * h) + '$', sol: '$\\cos^2\\alpha - \\sin^2\\alpha$' };
+  }, 'тождество двойной угол');
+
+  const piFrac = (n, B) => { const [nn, dd] = B === 0.5 ? [2 * n, 1] : [n, B]; const g = PLATFORM.R.gcd(nn, dd); const a = nn / g, b = dd / g; return b === 1 ? (a === 1 ? '' : a) + '\\pi' : '\\frac{' + (a === 1 ? '' : a) + '\\pi}{' + b + '}'; };
+  D(6, 'trig-graphs', 'd-trigfunc', '〰️', 'Свойства тригонометрических функций', 'Период, наибольшее и наименьшее значения. Ответ с π: 2π/3.', ['Период', 'Наибольшее/наименьшее', 'Амплитуда и средняя линия'], (lv, R) => {
+    const A = R.nz(-5, 5), B = R.pick([1, 2, 3, 4, 0.5, 6]), Dd = R.int(-4, 4), f = R.pick(['\\sin', '\\cos']);
+    const ex = '$y = ' + (A === 1 ? '' : A === -1 ? '-' : A) + f + '(' + (B === 1 ? '' : R.tn(B)) + 'x)' + R.term(Dd, '') + '$';
+    if (lv === 1) { const tanq = R.int(0, 3) === 0; if (tanq) return { q: 'Найдите период $y = \\tan ' + (B === 1 ? '' : R.tn(B)) + 'x$.', a: Math.PI / B, show: '$' + piFrac(1, B) + '$', sol: 'Период тангенса $\\frac{\\pi}{|B|}$.' }; return { q: 'Найдите период ' + ex, a: 2 * Math.PI / B, show: '$' + piFrac(2, B) + '$', sol: '$T = \\frac{2\\pi}{' + R.tn(B) + '}$' }; }
+    if (lv === 2) { const mx = R.int(0, 1); return { q: 'Найдите ' + (mx ? 'наибольшее' : 'наименьшее') + ' значение ' + ex, a: mx ? Math.abs(A) + Dd : Dd - Math.abs(A), sol: 'Синус и косинус меняются от −1 до 1.' }; }
+    return R.int(0, 1) ? { q: 'Найдите амплитуду ' + ex, a: Math.abs(A) } : { q: 'Найдите среднюю линию $y = c$ для ' + ex + ' (введите $c$).', a: Dd };
+  }, 'период амплитуда');
+
+  D(6, 'trigeq', 'd-trigeq', '⟲', 'Тригонометрические уравнения', 'Все решения на [0°; 360°) в градусах через «;».', ['sin x = a, cos x = a', 'tan x = a', 'Квадратные'], (lv, R) => {
+    const deg = x => ((Math.round(x) % 360) + 360) % 360;
+    const sols = (f, v) => { const out = []; for (let d = 0; d < 360; d += 15) { const r = d * Math.PI / 180; const y = f === 's' ? Math.sin(r) : f === 'c' ? Math.cos(r) : (Math.abs(Math.cos(r)) < 1e-9 ? NaN : Math.tan(r)); if (Math.abs(y - v) < 1e-9) out.push(d); } return out; };
+    const V = [[0, '0'], [0.5, '\\frac{1}{2}'], [-0.5, '-\\frac{1}{2}'], [Math.SQRT2 / 2, '\\frac{\\sqrt{2}}{2}'], [-Math.SQRT2 / 2, '-\\frac{\\sqrt{2}}{2}'], [Math.sqrt(3) / 2, '\\frac{\\sqrt{3}}{2}'], [-Math.sqrt(3) / 2, '-\\frac{\\sqrt{3}}{2}'], [1, '1'], [-1, '-1']];
+    if (lv === 1) { const f = R.pick(['s', 'c']); const [v, t] = R.pick(V); return { q: 'Решите на $[0°;\\ 360°)$: $' + (f === 's' ? '\\sin' : '\\cos') + ' x = ' + t + '$', a: sols(f, v), unit: '°', sol: 'По единичной окружности: ' + (f === 's' ? 'горизонталь $y = ' + t + '$' : 'вертикаль $x = ' + t + '$') + '.' }; }
+    if (lv === 2) { const [v, t] = R.pick([[1, '1'], [-1, '-1'], [Math.sqrt(3), '\\sqrt{3}'], [-Math.sqrt(3), '-\\sqrt{3}'], [Math.sqrt(3) / 3, '\\frac{\\sqrt{3}}{3}'], [0, '0']]); return { q: 'Решите на $[0°;\\ 360°)$: $\\tan x = ' + t + '$', a: sols('t', v), unit: '°', sol: 'Период тангенса 180°: второе решение на 180° больше первого.' }; }
+    const [t1, t2, tex] = R.pick([[1, -0.5, '2\\sin^2 x - \\sin x - 1 = 0'], [0, 0.5, '2\\sin^2 x - \\sin x = 0'], [0, 1, '\\cos^2 x - \\cos x = 0'], [0.5, -1, '2\\cos^2 x + \\cos x - 1 = 0']]); const f = tex.includes('sin') ? 's' : 'c';
+    return { q: 'Решите на $[0°;\\ 360°)$: $' + tex + '$', a: [...new Set([...sols(f, t1), ...sols(f, t2)])], unit: '°', sol: 'Замена $t = ' + (f === 's' ? '\\sin x' : '\\cos x') + '$: $t = ' + R.tn(t1) + '$ или $t = ' + R.tn(t2) + '$.' };
+  }, 'тригонометрическое уравнение');
+
+  D(6, 'sinecosine', 'd-sincos', '◭', 'Теоремы синусов и косинусов', 'Сторона, угол и площадь произвольного треугольника.', ['Теорема косинусов', 'Площадь', 'Теорема синусов'], (lv, R) => {
+    const a = R.int(2, 12), b = R.int(2, 12);
+    if (lv === 1) { const [g, cg] = R.pick([[60, 0.5], [120, -0.5], [90, 0]]); const c2 = a * a + b * b - 2 * a * b * cg; const c = Math.sqrt(c2); return { q: '$a = ' + a + '$, $b = ' + b + '$, $\\gamma = ' + g + '°$. Найдите $c$.', a: c, tol: 0.006 * c, show: Number.isInteger(c) ? String(c) : '$\\sqrt{' + c2 + '} \\approx ' + R.tn(R.round(c, 2)) + '$', sol: '$c^2 = ' + a * a + ' + ' + b * b + ' - 2 \\cdot ' + a + ' \\cdot ' + b + ' \\cdot ' + R.tn(cg) + ' = ' + c2 + '$' }; }
+    if (lv === 2) { const [g, sgn] = R.pick([[30, 0.5], [150, 0.5], [90, 1]]); return { q: 'Найдите площадь треугольника: стороны ' + a + ' и ' + b + ', угол между ними ' + g + '°.', a: a * b * sgn / 2, kb: 'decimal', sol: '$S = \\frac{1}{2} \\cdot ' + a + ' \\cdot ' + b + ' \\cdot \\sin ' + g + '°$' }; }
+    const [A, sA] = R.pick([[30, 0.5], [90, 1], [150, 0.5]]); return { q: 'В треугольнике $a = ' + a + '$, $\\alpha = ' + A + '°$. Найдите радиус описанной окружности $R$.', a: a / (2 * sA), kb: 'decimal', sol: '$2R = \\frac{a}{\\sin\\alpha}$' };
+  }, 'теорема косинусов синусов');
+
+  D(6, 'vectors', 'd-vec', '→', 'Векторы', 'Координаты, длина, скалярное произведение.', ['Координаты и длина', 'Скалярное произведение', 'Перпендикулярность'], (lv, R) => {
+    const ax = R.int(-6, 6), ay = R.int(-6, 6), bx = R.int(-6, 6), by = R.int(-6, 6);
+    if (lv === 1) { if (R.int(0, 1)) return { q: 'Найдите координаты $\\overrightarrow{AB}$: $A(' + ax + ';\\ ' + ay + ')$, $B(' + bx + ';\\ ' + by + ')$.', a: [bx - ax, by - ay], ordered: true, ph: 'x; y', show: '(' + (bx - ax) + '; ' + (by - ay) + ')' }; const [p, q, c] = R.pick([[3, 4, 5], [6, 8, 10], [5, 12, 13], [8, 15, 17], [1, 1, Math.SQRT2], [2, 3, Math.sqrt(13)]]); const s1 = R.pick([1, -1]), s2 = R.pick([1, -1]); return { q: 'Найдите длину вектора $(' + s1 * p + ';\\ ' + s2 * q + ')$.', a: c, tol: 1e-4, show: Number.isInteger(c) ? String(c) : '$\\sqrt{' + (p * p + q * q) + '}$' }; }
+    if (lv === 2) return { q: '$\\vec a = (' + ax + ';\\ ' + ay + ')$, $\\vec b = (' + bx + ';\\ ' + by + ')$. Найдите $\\vec a \\cdot \\vec b$.', a: ax * bx + ay * by, sol: '$' + ax + ' \\cdot ' + R.signed(bx) + ' + ' + R.signed(ay) + ' \\cdot ' + R.signed(by) + '$' };
+    const p = R.nz(-6, 6), q = R.nz(-6, 6), m = R.nz(-4, 4); const k = -p * m / q; if (!Number.isInteger(k * 2)) return null;
+    return { q: 'При каком $k$ векторы $(' + p + ';\\ ' + q + ')$ и $(' + m + ';\\ k)$ перпендикулярны?', a: k, kb: 'decimal', sol: '$' + p + ' \\cdot ' + R.signed(m) + ' + ' + R.signed(q) + 'k = 0$' };
+  }, 'вектор');
+
+  D(6, 'lineeq', 'd-line', '╱', 'Уравнение прямой', 'Наклон, перпендикуляр, расстояние от точки до прямой.', ['Через две точки', 'Перпендикулярная прямая', 'Расстояние'], (lv, R) => {
+    const k = R.nz(-4, 4), b = R.int(-6, 6), x1 = R.int(-5, 3), x2 = x1 + R.int(1, 4);
+    if (lv === 1) return { q: 'Прямая проходит через $(' + x1 + ';\\ ' + (k * x1 + b) + ')$ и $(' + x2 + ';\\ ' + (k * x2 + b) + ')$. Запишите её как $y = kx + b$: введите $k$; $b$.', a: [k, b], ordered: true, ph: 'k; b', show: '$y = ' + R.poly([k, b]) + '$' };
+    if (lv === 2) { const x0 = R.int(-4, 4) * Math.abs(k), y0 = R.int(-5, 5); const kk = -1 / k; const bb = y0 - kk * x0; return { q: 'Прямая проходит через $(' + x0 + ';\\ ' + y0 + ')$ перпендикулярно $y = ' + R.poly([k, b]) + '$. Найдите её $b$ в записи $y = kx + b$.', a: bb, kb: 'decimal', sol: 'Наклон $' + R.frac(-1, k) + '$, $b = ' + y0 + ' - (' + R.frac(-1, k) + ') \\cdot ' + R.signed(x0) + '$' }; }
+    const [A, B, N] = R.pick([[3, 4, 5], [4, 3, 5], [5, 12, 13], [12, 5, 13], [6, 8, 10]]); const sA = R.pick([1, -1]); const x0 = R.int(-5, 5), y0 = R.int(-5, 5), dd = R.int(1, 6); const C = -(sA * A * x0 + B * y0) + dd * N * R.pick([1, -1]);
+    return { q: 'Найдите расстояние от точки $(' + x0 + ';\\ ' + y0 + ')$ до прямой $' + R.term(sA * A, 'x', true) + R.term(B, 'y') + R.term(C, '') + ' = 0$.', a: dd, kb: 'decimal', sol: '$d = \\frac{|' + sA * A * x0 + ' + ' + R.signed(B * y0) + ' + ' + R.signed(C) + '|}{\\sqrt{' + A * A + ' + ' + B * B + '}}$' };
+  }, 'прямая уравнение');
+
+  D(6, 'circleeq', 'd-circleeq', '◯', 'Уравнение окружности', 'Центр и радиус: введите a; b; r.', ['Канонический вид', 'Выделение квадратов', 'Положение точки'], (lv, R) => {
+    const a = R.int(-6, 6), b = R.int(-6, 6), r = R.int(1, 8);
+    const sq = (v, s) => v === 0 ? s + '^2' : '(' + s + R.term(-v, '') + ')^2';
+    if (lv === 1) return { q: 'Найдите центр и радиус: $' + sq(a, 'x') + ' + ' + sq(b, 'y') + ' = ' + r * r + '$', a: [a, b, r], ordered: true, ph: 'a; b; r', show: 'центр (' + a + '; ' + b + '), r = ' + r };
+    if (lv === 2) return { q: 'Найдите центр и радиус: $x^2 + y^2' + R.term(-2 * a, 'x') + R.term(-2 * b, 'y') + R.term(a * a + b * b - r * r, '') + ' = 0$', a: [a, b, r], ordered: true, ph: 'a; b; r', show: 'центр (' + a + '; ' + b + '), r = ' + r, sol: 'Выделяем полные квадраты: $' + sq(a, 'x') + ' + ' + sq(b, 'y') + ' = ' + r * r + '$' };
+    const px = a + R.int(-r - 2, r + 2), py = b + R.int(-r - 2, r + 2); const dd = (px - a) ** 2 + (py - b) ** 2; const pos = dd < r * r ? 'внутри' : dd === r * r ? 'на окружности' : 'снаружи';
+    return { q: 'Где лежит точка $(' + px + ';\\ ' + py + ')$ относительно окружности $' + sq(a, 'x') + ' + ' + sq(b, 'y') + ' = ' + r * r + '$?', opts: [pos, ...['внутри', 'на окружности', 'снаружи'].filter(x => x !== pos)], sol: '$(' + px + R.term(-a, '') + ')^2 + (' + py + R.term(-b, '') + ')^2 = ' + dd + '$, сравниваем с $' + r * r + '$.' };
+  }, 'окружность уравнение');
 })();
 

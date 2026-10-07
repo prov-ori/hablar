@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Аксиома — математика с нуля до гимназии</title>
+<meta name="description" content="Бесплатный интерактивный курс математики по эстонской программе: от счёта до производной и интеграла. Уроки, бесконечный задачник, лаборатория графиков, карточки, контрольные.">
+<link rel="canonical" href="https://prov-ori.github.io/hablar/matematika/">
+<meta name="theme-color" content="#3550b8">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Аксиома">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:url" content="https://prov-ori.github.io/hablar/matematika/">
+<meta property="og:title" content="Аксиома — математика от счёта до интеграла">
+<meta property="og:description" content="8 курсов по эстонской программе (1–12 класс): уроки с эстонскими терминами, генератор задач, интерактивные графики, карточки и контрольные. Бесплатно, без регистрации.">
+<meta property="og:image" content="https://prov-ori.github.io/hablar/matematika/og-image.png">
+<meta property="og:image:secure_url" content="https://prov-ori.github.io/hablar/matematika/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Логотип «Аксиома» — буква π — и надпись «Математика от счёта до интеграла»">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Аксиома — математика от счёта до интеграла">
+<meta name="twitter:description" content="8 курсов по эстонской программе (1–12 класс): уроки с эстонскими терминами, генератор задач, интерактивные графики, карточки и контрольные. Бесплатно, без регистрации.">
+<meta name="twitter:image" content="https://prov-ori.github.io/hablar/matematika/og-image.png">
+<meta name="twitter:image:alt" content="Логотип «Аксиома» — буква π — и надпись «Математика от счёта до интеграла»">
+<meta property="vk:image" content="https://prov-ori.github.io/hablar/matematika/og-image.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap">
+<link rel="stylesheet" href="katex/katex.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">К содержимому</a>
+<header class="top"><div class="top-in">
+  <a class="brand" href="#/"><img src="icon-192.png" alt="" width="34" height="34"><span><b>Аксиома</b><small>математика с нуля до гимназии</small></span></a>
+  <nav class="top-nav" aria-label="Разделы">
+    <a href="#/" data-nav="#/">Курсы</a><a href="#/drills" data-nav="#/drills">Задачник</a><a href="#/labs" data-nav="#/labs">Лаборатория</a><a href="#/train" data-nav="#/train">Тренажёры</a><a href="#/tests" data-nav="#/tests">Контрольные</a>
+  </nav>
+  <button class="search-btn" id="searchBtn" aria-label="Поиск по платформе"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Поиск</span><kbd>Ctrl K</kbd></button>
+  <button class="icon-btn" id="themeBtn" aria-label="Переключить тему"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg></button>
+  <a class="rank-chip" id="rankChip" href="#/me" title="Звание и опыт"></a>
+</div></header>
+<main id="main" tabindex="-1"><noscript>Для работы платформы нужен JavaScript.</noscript></main>
+<nav class="tabbar" aria-label="Навигация">
+  <a href="#/" data-nav="#/"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16.5 4.5l3.8 1-3.9 15-3.8-1z"/></svg>Курсы</a>
+  <a href="#/drills" data-nav="#/drills"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Задачник</a>
+  <a href="#/labs" data-nav="#/labs"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/><path d="M7 15h10"/></svg>Лаборатория</a>
+  <a href="#/train" data-nav="#/train"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Тренажёры</a>
+  <a href="#/search" id="tabSearch"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Поиск</a>
+</nav>
+<div class="modal" id="search" role="dialog" aria-modal="true" aria-label="Поиск"><div class="modal-box"><input id="sin" type="search" placeholder="Тема, формула, термин (рус./эст.)…" autocomplete="off"><ul class="results" id="sres"></ul></div></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<footer>Аксиома · учебный ресурс по программе эстонской школы. Тексты составлены автоматически — сверяйте с учебником, © <span id="year"></span>. <a href="#/about">О платформе</a> · <a href="#/glossary">Словарь</a> · <a href="#/me">Прогресс</a></footer>
+<script src="katex/katex.min.js"></script>
+<script src="config.js"></script>
+<script src="c1.js"></script>
+<script src="c2.js"></script>
+<script src="c3.js"></script>
+<script src="c4.js"></script>
+<script src="c5.js"></script>
+<script src="c6.js"></script>
+<script src="c7.js"></script>
+<script src="c8.js"></script>
+<script src="drills.js"></script>
+<script src="labs.js"></script>
+<script src="extra.js"></script>
+<script src="tests.js"></script>
+<script src="engine.js"></script>
+</body>
+</html>

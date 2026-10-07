@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="{{LANG}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{TITLE}}</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<link rel="canonical" href="{{BASE_URL}}">
+<meta name="theme-color" content="{{ACCENT}}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{NAME}}">
+<meta property="og:locale" content="{{OG_LOCALE}}">
+<meta property="og:url" content="{{BASE_URL}}">
+<meta property="og:title" content="{{OG_TITLE}}">
+<meta property="og:description" content="{{OG_DESCRIPTION}}">
+<meta property="og:image" content="{{BASE_URL}}og-image.png">
+<meta property="og:image:secure_url" content="{{BASE_URL}}og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{OG_ALT}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{OG_TITLE}}">
+<meta name="twitter:description" content="{{OG_DESCRIPTION}}">
+<meta name="twitter:image" content="{{BASE_URL}}og-image.png">
+<meta name="twitter:image:alt" content="{{OG_ALT}}">
+<meta property="vk:image" content="{{BASE_URL}}og-image.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="{{FONT_CSS}}">
+{{VENDOR_CSS}}<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">К содержимому</a>
+<header class="top"><div class="top-in">
+  <a class="brand" href="#/"><img src="icon-192.png" alt="" width="34" height="34"><span><b>{{NAME}}</b><small>{{TAGLINE}}</small></span></a>
+  {{TOPNAV}}
+  <button class="search-btn" id="searchBtn" aria-label="Поиск по платформе"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Поиск</span><kbd>Ctrl K</kbd></button>
+  <button class="icon-btn" id="themeBtn" aria-label="Переключить тему"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg></button>
+  <a class="rank-chip" id="rankChip" href="#/me" title="Звание и опыт"></a>
+</div></header>
+<main id="main" tabindex="-1"><noscript>Для работы платформы нужен JavaScript.</noscript></main>
+{{TABBAR}}
+<div class="modal" id="search" role="dialog" aria-modal="true" aria-label="Поиск"><div class="modal-box"><input id="sin" type="search" placeholder="{{SEARCH_PLACEHOLDER}}" autocomplete="off"><ul class="results" id="sres"></ul></div></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<footer>{{FOOTER}}</footer>
+{{SCRIPTS}}
+</body>
+</html>

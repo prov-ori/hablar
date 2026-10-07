@@ -1,23 +1,44 @@
 /* EduEngine — универсальный движок учебной платформы (SPA на hash-роутинге, без сборки).
-   Данные: window.PLATFORM (config.js + файлы контента). Прогресс: localStorage. */
+   Данные: window.PLATFORM (config.js + файлы контента). Прогресс: localStorage.
+   Расширения: формулы $…$ (KaTeX, если подключён), генераторы задач (PLATFORM.drills),
+   интерактивные лаборатории (PLATFORM.labs), подписи тренажёров из config.labels. */
 (function () {
   'use strict';
   const P = window.PLATFORM, C = P.config;
+  P.drills = P.drills || []; P.labs = P.labs || [];
   const DEF = { hero: { title: C.name, lead: '' }, monogram: (C.name || '?')[0], searchHint: 'Введите слово для поиска', places: { route: 'places', title: 'Карта', lead: 'Нажмите точку на схеме.', teaser: '' }, people: { title: 'Персоналии', one: 'Персона', teaser: 'имён с краткими справками.' } };
   for (const k in DEF) C[k] = typeof DEF[k] === 'object' ? Object.assign({}, DEF[k], C[k] || {}) : (C[k] || DEF[k]);
+  /* Подписи, зависящие от предмета. Значения по умолчанию — литературные; проект переопределяет их в config.labels. */
+  const L = (() => {
+    const d = {
+      tests: { title: 'Тесты преподавателя', short: 'Тесты', desc: 'Все вопросы итоговых тестов с образцами ответов и самооценкой.', lead: 'Вопросы итоговых тестов по каждому курсу. Сначала ответьте сами (устно или в поле), затем откройте образец и честно оцените себя — так считается готовность.', ready: 'готовность по тесту преподавателя', ach: 'Готовность 80%+ по тесту преподавателя' },
+      pairs: { title: 'Автор и произведение', lead: 'Нажмите произведение, затем его автора.', desc: 'Соедините {n} произведений с авторами.', q1: '«', q2: '»', item: 'Произведение', ico: '🔗', achName: 'Сводник', achDesc: 'Собрать все пары «автор — произведение»' },
+      heroes: { title: 'Чей это герой?', desc: '{n} персонажей — угадайте произведение.', q1: '«', q2: '»', ico: '🎭', achName: 'Театрал', achDesc: 'Угадать 10 героев подряд' },
+      chrono: { title: 'Хронология', desc: 'Расставьте события в правильном порядке.', ico: '⏳', achName: 'Летописец', achDesc: 'Расставить хронологию без ошибок' },
+      timeline: { title: 'Лента времени', desc: '{n} событий из всех уроков в хронологическом порядке.' },
+      allDone: 'Вся летопись', lessonWord: 'урок', notFoundHint: 'Ничего не найдено. Попробуйте другое слово.',
+      drills: { title: 'Задачник', desc: 'Бесконечные задачи из генератора: три уровня, проверка и разбор.', ph: 'Ответ' },
+      labs: { title: 'Лаборатория', desc: 'Интерактивные модели: двигайте ползунки и смотрите, что меняется.' }
+    };
+    const u = C.labels || {};
+    for (const k in u) d[k] = (typeof d[k] === 'object' && typeof u[k] === 'object') ? Object.assign({}, d[k], u[k]) : u[k];
+    return d;
+  })();
   const PL = C.places.route;
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  let rnd = Math.random;
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const pick = (a, n) => shuffle(a).slice(0, n);
   const today = () => new Date().toISOString().slice(0, 10);
   const plural = (n, f) => { const m10 = n % 10, m100 = n % 100; return f[(m10 === 1 && m100 !== 11) ? 0 : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 1 : 2]; };
+  const fill = (s, n) => String(s).replace('{n}', n);
 
   /* ——— Хранилище ——— */
   const KEY = C.storageKey;
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
-  const S = Object.assign({ xp: 0, done: {}, quiz: {}, cards: {}, ach: {}, tests: {}, best: {}, days: [], visits: {}, last: null, theme: null }, load());
+  const S = Object.assign({ xp: 0, done: {}, quiz: {}, cards: {}, ach: {}, tests: {}, best: {}, days: [], visits: {}, last: null, theme: null, drills: {}, daily: {}, lv: {} }, load());
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* приватный режим */ } };
 
   /* ——— Подготовка данных ——— */
@@ -25,6 +46,8 @@
   const courseOf = n => courses.find(c => c.n === n);
   const lessonsOf = n => P.lessons.filter(l => l.course === n);
   const byId = {}; P.lessons.forEach((l, i) => { byId[l.id] = l; l.idx = i; });
+  const drillById = {}; P.drills.forEach(d => { drillById[d.id] = d; });
+  const labById = {}; P.labs.forEach(d => { labById[d.id] = d; });
   const Q = []; // общий банк вопросов
   P.lessons.forEach(l => (l.quiz || []).forEach((q, i) => Q.push({ id: l.id + '#' + i, q: q[0], a: q[1], c: q[2], e: q[3] || '', lesson: l.id, course: l.course })));
   const CARDS = [];
@@ -34,13 +57,29 @@
   P.lessons.forEach(l => (l.events || []).forEach(e => EVENTS.push({ y: e[0], label: e[2] || String(e[0]), t: e[1], lesson: l.id, course: l.course })));
   EVENTS.sort((a, b) => a.y - b.y);
 
+  /* ——— Формулы ——— */
+  function tex(s, display) {
+    if (window.katex) { try { return window.katex.renderToString(s, { throwOnError: false, displayMode: !!display }); } catch (e) { /* ниже — запасной вид */ } }
+    return '<code class="tex">' + esc(s) + '</code>';
+  }
+
   /* ——— Мини-разметка уроков ——— */
-  function inline(s) {
+  function inlineText(s) {
     return esc(s)
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[\s(«])\*(?!\s)(.+?)\*(?=[\s.,;:!?)»]|$)/g, '$1<em>$2</em>')
       .replace(/\[\[(.+?)\]\]/g, (m, t) => '<a href="#/glossary?q=' + encodeURIComponent(t) + '">' + t + '</a>')
       .replace(/\[(.+?)\]\(#(.+?)\)/g, '<a href="#$2">$1</a>');
+  }
+  function inline(s) {
+    return String(s == null ? '' : s).split(/(\$[^$]+\$)/g).map((p, i) => i % 2 ? tex(p.slice(1, -1)) : inlineText(p)).join('');
+  }
+  // делит строку таблицы по «|», не трогая «|» внутри формул $…$
+  function cellsOf(line) {
+    const out = []; let cur = '', m = false;
+    for (const ch of line) { if (ch === '$') m = !m; if (ch === '|' && !m) { out.push(cur); cur = ''; } else cur += ch; }
+    out.push(cur);
+    return out.slice(line.startsWith('|') ? 1 : 0, line.endsWith('|') ? -1 : undefined).map(c => c.trim());
   }
   function md(src) {
     const lines = String(src).replace(/\r/g, '').split('\n');
@@ -53,6 +92,9 @@
       const line = raw.trim();
       if (!line) { flush(); continue; }
       let m;
+      if ((m = line.match(/^\$\$(.+)\$\$$/))) { flush(); out += '<div class="math-d">' + tex(m[1], true) + '</div>'; continue; }
+      if ((m = line.match(/^@lab\s+(\S+)/))) { flush(); out += '<div class="lab-slot" data-lab="' + esc(m[1]) + '"></div>'; continue; }
+      if ((m = line.match(/^@drill\s+(\S+)/))) { flush(); const d = drillById[m[1]]; if (d) out += '<a class="drill-link" href="#/drill/' + esc(d.id) + '"><span class="ico">' + esc(d.ico || '✎') + '</span><span><small>' + esc(L.drills.title) + '</small><b>' + esc(d.title) + '</b></span><span class="go">›</span></a>'; continue; }
       if ((m = line.match(/^(#{2,3})\s+(.*)/))) { flush(); out += '<h' + m[1].length + '>' + inline(m[2]) + '</h' + m[1].length + '>'; continue; }
       if ((m = line.match(/^>(!|e|i|\?)\s+(.*)/))) {
         flush();
@@ -60,13 +102,14 @@
         else { const cls = { '!': 'exam', e: 'est', i: 'info' }[m[1]]; const lab = Object.assign({ '!': 'На экзамене: ', e: 'Важно: ', i: '' }, C.calloutLabels || {})[m[1]]; out += '<div class="note ' + cls + '"><strong>' + lab + '</strong>' + inline(m[2]) + '</div>'; }
         continue;
       }
-      if (line.startsWith('|')) { flushP(); flushL(); const cells = line.replace(/^\||\|$/g, '').split('|').map(c => c.trim()); if (cells.every(c => /^-+$/.test(c))) continue; (table = table || []).push(cells); continue; }
+      if (line.startsWith('|')) { flushP(); flushL(); const cells = cellsOf(line); if (cells.every(c => /^:?-+:?$/.test(c))) continue; (table = table || []).push(cells); continue; }
       if ((m = line.match(/^(-|\d+\.)\s+(.*)/))) { flushP(); flushT(); const t = m[1] === '-' ? 'ul' : 'ol'; if (!list || list.t !== t) { flushL(); list = { t, items: [] }; } list.items.push(m[2]); continue; }
       flushL(); flushT(); para.push(line);
     }
     flush();
     return out;
   }
+  const strip = s => String(s || '').replace(/\$([^$]+)\$/g, '$1').replace(/\\[a-zA-Z]+/g, ' ').replace(/[{}]/g, '');
 
   /* ——— Опыт, ранги, достижения ——— */
   const rankOf = xp => { let r = C.ranks[0], next = null; for (const x of C.ranks) { if (xp >= x[0]) r = x; else { next = x; break; } } return { name: r[1], min: r[0], next }; };
@@ -78,24 +121,37 @@
   const doneIn = n => lessonsOf(n).filter(l => S.done[l.id]).length;
   const testPct = n => { const t = P.tests[n]; if (!t) return 0; const r = S.tests[n] || {}; const pts = t.items.reduce((s, _, i) => s + (r[i] === 2 ? 1 : r[i] === 1 ? .5 : 0), 0); return Math.round(100 * pts / t.items.length); };
   const correctCount = () => Object.values(S.quiz).filter(Boolean).length;
+  const solved = () => S.best.solved || 0;
+  const mastered = id => (S.drills[id] && S.drills[id].m) || 0;
   const ACH = [
     ['first', '📖', 'Первая страница', 'Завершить первый урок', () => Object.keys(S.done).length >= 1],
     ['ten', '📚', 'Десять глав', 'Завершить 10 уроков', () => Object.keys(S.done).length >= 10],
     ['half', '🏛', 'Полпути', 'Завершить половину всех уроков', () => Object.keys(S.done).length >= P.lessons.length / 2],
-    ['all', '👑', 'Вся летопись', 'Завершить все уроки', () => Object.keys(S.done).length >= P.lessons.length],
+    ['all', '👑', L.allDone, 'Завершить все уроки', () => Object.keys(S.done).length >= P.lessons.length],
     ...courses.map(c => ['course' + c.n, '✦', 'Курс ' + c.roman, 'Пройти все уроки курса «' + c.title + '»', () => doneIn(c.n) === lessonsOf(c.n).length && lessonsOf(c.n).length > 0]),
     ['q50', '🎯', 'Меткий', '50 верных ответов', () => correctCount() >= 50],
     ['q200', '🏹', 'Снайпер', '200 верных ответов', () => correctCount() >= 200],
     ['perfect', '💯', 'Без единой ошибки', 'Пройти тест урока на 100%', () => !!S.ach._perfect],
     ['cards50', '🗂', 'Картотека', 'Повторить 50 карточек', () => (S.best.cardsSeen || 0) >= 50],
     ['cards300', '🧠', 'Долгая память', 'Повторить 300 карточек', () => (S.best.cardsSeen || 0) >= 300],
-    ['chrono', '⏳', 'Летописец', 'Расставить хронологию без ошибок', () => !!S.ach._chrono],
-    ['pairs', '🔗', 'Сводник', 'Собрать все пары «автор — произведение»', () => !!S.ach._pairs],
+    ...(EVENTS.length ? [['chrono', L.chrono.ico, L.chrono.achName, L.chrono.achDesc, () => !!S.ach._chrono]] : []),
+    ...(P.works.length ? [['pairs', L.pairs.ico, L.pairs.achName, L.pairs.achDesc, () => !!S.ach._pairs]] : []),
     ['blitz', '⚡', 'Скорострел', 'Набрать 15 очков в блице', () => (S.best.blitz || 0) >= 15],
-    ['heroes', '🎭', 'Театрал', 'Угадать 10 героев подряд', () => (S.best.heroes || 0) >= 10],
+    ...(P.heroes.length ? [['heroes', L.heroes.ico, L.heroes.achName, L.heroes.achDesc, () => (S.best.heroes || 0) >= 10]] : []),
     ['exam', '🎓', 'Экзаменуемый', 'Сдать пробный экзамен на 80%+', () => !!S.ach._exam],
-    ['ready', '✅', 'Готов к сдаче', 'Готовность 80%+ по тесту преподавателя', () => Object.keys(P.tests).some(n => testPct(n) >= 80)],
-    ['places', '◆', 'Краевед', 'Открыть все места на карте', () => P.places.length > 0 && Object.keys(S.visits).filter(k => k.startsWith('pl:')).length >= P.places.length],
+    ['ready', '✅', 'Готов к сдаче', L.tests.ach, () => Object.keys(P.tests).some(n => testPct(n) >= 80)],
+    ...(P.drills.length ? [
+      ['solve10', '✏️', 'Первые задачи', 'Решить 10 задач в задачнике', () => solved() >= 10],
+      ['solve100', '📝', 'Сотня', 'Решить 100 задач', () => solved() >= 100],
+      ['solve500', '🏔', 'Пятьсот', 'Решить 500 задач', () => solved() >= 500],
+      ['master', '🥇', 'Мастер', 'Освоить любой генератор на 3-м уровне', () => P.drills.some(d => mastered(d.id) >= 3)],
+      ['master10', '🏅', 'Многостаночник', 'Освоить 10 разных генераторов', () => P.drills.filter(d => mastered(d.id) >= 1).length >= 10],
+      ['sprint', '⏱', 'Спринтер', 'Решить 15 задач в спринте за 60 секунд', () => (S.best.sprint || 0) >= 15],
+      ['daily', '☀️', 'Разминка', 'Пройти разминку дня', () => Object.keys(S.daily).length >= 1],
+      ['daily7', '📅', 'Режим', 'Пройти разминку 7 разных дней', () => Object.keys(S.daily).length >= 7]
+    ] : []),
+    ...(P.labs.length ? [['labs', '🔬', 'Экспериментатор', 'Открыть 5 лабораторий', () => Object.keys(S.visits).filter(k => k.startsWith('lab:')).length >= Math.min(5, P.labs.length)]] : []),
+    ...(P.places.length ? [['places', '◆', 'Краевед', 'Открыть все места на карте', () => Object.keys(S.visits).filter(k => k.startsWith('pl:')).length >= P.places.length]] : []),
     ['streak3', '🔥', 'Три дня подряд', 'Заниматься 3 дня подряд', () => streak() >= 3],
     ['streak7', '🌋', 'Неделя', 'Заниматься 7 дней подряд', () => streak() >= 7]
   ];
@@ -115,6 +171,9 @@
   function markNav() { const h = location.hash || '#/'; $$('[data-nav]').forEach(a => { const k = a.getAttribute('data-nav'); const on = k === '#/' ? (h === '#/' || h === '') : h.startsWith(k); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); }
   const cs = n => 'style="--c:' + (courseOf(n) ? courseOf(n).color : 'var(--accent)') + '"';
   const srcBadge = l => { const s = C.sourceLabels[l.src || 'teacher']; return '<span class="badge-src ' + (l.src === 'extra' || l.src === 'mixed' ? 'extra' : '') + '" title="' + esc(s[1]) + '">' + esc(s[0]) + '</span>'; };
+  const stars = id => { const m = mastered(id); return '<span class="stars" title="Освоено уровней: ' + m + ' из 3">' + [1, 2, 3].map(k => k <= m ? '★' : '☆').join('') + '</span>'; };
+  const drillTile = d => `<a class="tile drill-tile" href="#/drill/${esc(d.id)}" ${cs(d.course)}><span class="ico">${esc(d.ico || '✎')}</span><b>${esc(d.title)}</b><p>${esc(d.desc || '')}</p>${stars(d.id)}</a>`;
+  const labTile = d => `<a class="tile lab-tile" href="#/lab/${esc(d.id)}" ${cs(d.course)}><span class="ico">${esc(d.ico || '🔬')}</span><b>${esc(d.title)}</b><p>${esc(d.desc || '')}</p>${S.visits['lab:' + d.id] ? '<small class="muted">✓ открыта</small>' : ''}</a>`;
 
   /* ——— Экраны ——— */
   const V = {};
@@ -123,6 +182,7 @@
     const total = P.lessons.length, done = Object.keys(S.done).length;
     const last = S.last && byId[S.last];
     const nextL = last ? (P.lessons[last.idx + 1] && !S.done[last.id] ? last : P.lessons[last.idx + 1] || last) : P.lessons[0];
+    const dailyDone = S.daily[today()] != null;
     mount(`<div class="home-top">
       <section class="hero">
         <h1>${esc(C.hero.title)}</h1>
@@ -137,20 +197,26 @@
         }).join('')}</nav>
         <div class="plank"></div>
       </div></div>
-      <div class="shelf-legend">${courses.map(c => `<a href="#/c/${c.n}" style="--c:${c.color}"><b>${c.roman}</b><div>${esc(c.title)}<span>${esc(c.short)} · ${doneIn(c.n)}/${lessonsOf(c.n).length}</span></div></a>`).join('')}</div>
+      <div class="shelf-legend">${courses.map(c => `<a href="#/c/${c.n}" style="--c:${c.color}"><b>${c.roman}</b><div>${esc(c.title)}<span>${esc(c.grade)} · ${doneIn(c.n)}/${lessonsOf(c.n).length}</span></div></a>`).join('')}</div>
+      <div class="home-actions">
       ${nextL ? `<a class="continue" href="#/l/${nextL.id}" ${cs(nextL.course)}><div><small>${S.last ? 'Продолжить' : 'Начать с первого урока'}</small><b>${esc(nextL.title)}</b></div><span style="margin-left:auto">›</span></a>` : ''}
+      ${P.drills.length ? `<a class="continue daily" href="#/daily"><div><small>${dailyDone ? 'Разминка дня пройдена · ' + S.daily[today()] + ' из 5' : 'Разминка дня · 5 задач · +20 опыта'}</small><b>${dailyDone ? 'Решить ещё раз' : 'Пять задач на сегодня'}</b></div><span style="margin-left:auto">☀</span></a>` : ''}
+      </div>
       <div class="stats">
         <div class="stat"><b>${done}/${total}</b><span>уроков пройдено</span></div>
+        ${P.drills.length ? `<div class="stat"><b>${solved()}</b><span>задач решено</span></div>` : ''}
         <div class="stat"><b>${correctCount()}</b><span>верных ответов из ${Q.length}</span></div>
         <div class="stat"><b>${streak()}</b><span>${plural(streak(), ['день', 'дня', 'дней'])} подряд</span></div>
         <div class="stat"><b>${dueCards().length}</b><span>карточек к повторению</span></div>
       </div>
+      ${P.labs.length ? `<h2>${esc(L.labs.title)}</h2><p class="muted">${esc(L.labs.desc)}</p><div class="grid">${P.labs.slice(0, 6).map(labTile).join('')}</div>${P.labs.length > 6 ? `<p><a href="#/labs">Все ${P.labs.length} ${plural(P.labs.length, ['лаборатория', 'лаборатории', 'лабораторий'])} ›</a></p>` : ''}` : ''}
+      ${P.drills.length ? `<h2>${esc(L.drills.title)}</h2><p class="muted">${P.drills.length} генераторов задач. ${esc(L.drills.desc)}</p><div class="chips">${courses.map(c => `<a class="chip" href="#/drills?c=${c.n}" ${cs(c.n)}>${c.roman}. ${esc(c.title)} · ${P.drills.filter(d => d.course === c.n).length}</a>`).join('')}</div>` : ''}
       <h2>Тренажёры</h2>
       <div class="grid">${trainTiles().slice(0, 6).join('')}</div>
       <h2>Справочники</h2>
       <div class="grid">
         ${P.places.length ? `<a class="tile" href="#/${PL}"><span class="ico">◆</span><b>${esc(C.places.title)}</b><p>${esc(C.places.teaser)} ${P.places.length} мест на карте.</p></a>` : ''}
-        ${EVENTS.length ? `<a class="tile" href="#/timeline"><span class="ico">⏳</span><b>Лента времени</b><p>${EVENTS.length} событий из всех уроков в хронологическом порядке.</p></a>` : ''}
+        ${EVENTS.length ? `<a class="tile" href="#/timeline"><span class="ico">⏳</span><b>${esc(L.timeline.title)}</b><p>${esc(fill(L.timeline.desc, EVENTS.length))}</p></a>` : ''}
         ${P.authors.length ? `<a class="tile" href="#/authors"><span class="ico">✒</span><b>${esc(C.people.title)}</b><p>${P.authors.length} ${esc(C.people.teaser)}</p></a>` : ''}
         ${P.glossary.length ? `<a class="tile" href="#/glossary"><span class="ico">Аа</span><b>Словарь терминов</b><p>${P.glossary.length} понятий с определениями.</p></a>` : ''}
       </div>`);
@@ -158,30 +224,35 @@
 
   function trainTiles() {
     return [
-      `<a class="tile" href="#/tests"><span class="ico">✎</span><b>Тесты преподавателя</b><p>Все вопросы итоговых тестов с образцами ответов и самооценкой.</p></a>`,
+      P.drills.length ? `<a class="tile" href="#/drill/mix"><span class="ico">🎲</span><b>Смешанная тренировка</b><p>10 задач из разных генераторов — как на контрольной.</p></a>` : '',
+      Object.keys(P.tests).length ? `<a class="tile" href="#/tests"><span class="ico">✎</span><b>${esc(L.tests.title)}</b><p>${esc(L.tests.desc)}</p></a>` : '',
       `<a class="tile" href="#/train/exam/all"><span class="ico">🎓</span><b>Пробный экзамен</b><p>20 случайных вопросов, без подсказок до конца.</p></a>`,
       `<a class="tile" href="#/train/cards/all"><span class="ico">🗂</span><b>Карточки</b><p>${CARDS.length} карточек с интервальным повторением.</p></a>`,
-      `<a class="tile" href="#/train/chrono"><span class="ico">⏳</span><b>Хронология</b><p>Расставьте события в правильном порядке.</p></a>`,
-      `<a class="tile" href="#/train/pairs"><span class="ico">🔗</span><b>Автор и произведение</b><p>Соедините ${P.works.length} произведений с авторами.</p></a>`,
-      `<a class="tile" href="#/train/heroes"><span class="ico">🎭</span><b>Чей это герой?</b><p>${P.heroes.length} персонажей — угадайте произведение.</p></a>`,
-      `<a class="tile" href="#/train/blitz"><span class="ico">⚡</span><b>Блиц «Верно или нет»</b><p>60 секунд, как можно больше ответов.</p></a>`
-    ];
+      `<a class="tile" href="#/train/blitz"><span class="ico">⚡</span><b>Блиц «Верно или нет»</b><p>60 секунд, как можно больше ответов.</p></a>`,
+      P.works.length ? `<a class="tile" href="#/train/pairs"><span class="ico">${L.pairs.ico}</span><b>${esc(L.pairs.title)}</b><p>${esc(fill(L.pairs.desc, P.works.length))}</p></a>` : '',
+      P.heroes.length ? `<a class="tile" href="#/train/heroes"><span class="ico">${L.heroes.ico}</span><b>${esc(L.heroes.title)}</b><p>${esc(fill(L.heroes.desc, P.heroes.length))}</p></a>` : '',
+      EVENTS.length ? `<a class="tile" href="#/train/chrono"><span class="ico">${L.chrono.ico}</span><b>${esc(L.chrono.title)}</b><p>${esc(L.chrono.desc)}</p></a>` : ''
+    ].filter(Boolean);
   }
 
   V.course = n => {
     n = +n; const c = courseOf(n); if (!c) return V.notfound();
-    const ls = lessonsOf(n), d = doneIn(n);
+    const ls = lessonsOf(n), d = doneIn(n), dr = P.drills.filter(x => x.course === n), lb = P.labs.filter(x => x.course === n);
     mount(`<div class="narrow" ${cs(n)}>
       <nav class="crumbs"><a href="#/">Главная</a> / <span>Курс ${c.roman}</span></nav>
       <header class="course-head"><span class="roman">Курс ${c.roman} · ${esc(c.grade)}</span><h1>${esc(c.title)}</h1><p class="lead">${esc(c.short)}</p></header>
       <div class="bar" aria-label="Прогресс курса"><i style="width:${Math.round(100 * d / Math.max(1, ls.length))}%"></i></div>
-      <p class="muted">Пройдено ${d} из ${ls.length} ${plural(ls.length, ['урока', 'уроков', 'уроков'])}${P.tests[n] ? ' · готовность по тесту преподавателя ' + testPct(n) + '%' : ''}</p>
+      <p class="muted">Пройдено ${d} из ${ls.length} ${plural(ls.length, ['урока', 'уроков', 'уроков'])}${P.tests[n] ? ' · ' + esc(L.tests.ready) + ' ' + testPct(n) + '%' : ''}</p>
       <ol class="lessons">${ls.map(l => `<li><a href="#/l/${l.id}" class="${S.done[l.id] ? 'done' : ''}"><span><b>${esc(l.title)}</b><small>${esc(l.sub || '')}</small></span>${srcBadge(l)}</a></li>`).join('')}</ol>
       <div class="btn-row">
         <a class="btn primary" href="#/train/exam/${n}">Экзамен по курсу</a>
+        ${dr.length ? `<a class="btn" href="#/drill/mix?c=${n}">Смешанные задачи</a>` : ''}
         <a class="btn" href="#/train/cards/${n}">Карточки курса</a>
-        ${P.tests[n] ? `<a class="btn" href="#/tests/${n}">Тест преподавателя</a>` : ''}
-      </div></div>`, 'Курс ' + c.roman);
+        ${P.tests[n] ? `<a class="btn" href="#/tests/${n}">${esc(L.tests.short)}</a>` : ''}
+      </div>
+      ${lb.length ? `<h2>${esc(L.labs.title)}</h2><div class="grid">${lb.map(labTile).join('')}</div>` : ''}
+      ${dr.length ? `<h2>${esc(L.drills.title)}</h2><div class="grid">${dr.map(drillTile).join('')}</div>` : ''}
+      </div>`, 'Курс ' + c.roman);
   };
 
   V.lesson = id => {
@@ -190,11 +261,14 @@
     const prev = ls[i - 1], next = ls[i + 1];
     S.last = id; save();
     const facts = l.facts && l.facts.length ? '<h2>Главное в таблице</h2><dl class="facts">' + l.facts.map(f => '<dt>' + inline(f[0]) + '</dt><dd>' + inline(f[1]) + '</dd>').join('') + '</dl>' : '';
+    const body = md(l.body);
+    const own = P.drills.filter(d => d.lesson === id && !body.includes('#/drill/' + d.id + '"'));
+    const practice = own.length ? '<h2>Практика</h2>' + own.map(d => '<a class="drill-link" href="#/drill/' + esc(d.id) + '"><span class="ico">' + esc(d.ico || '✎') + '</span><span><small>' + esc(L.drills.title) + '</small><b>' + esc(d.title) + '</b></span>' + stars(d.id) + '<span class="go">›</span></a>').join('') : '';
     mount(`<article class="narrow" ${cs(l.course)}>
       <nav class="crumbs"><a href="#/">Главная</a> / <a href="#/c/${l.course}">Курс ${c.roman}</a> / <span>${i + 1} из ${ls.length}</span></nav>
       <h1>${esc(l.title)}</h1>
       <div class="lesson-meta">${srcBadge(l)}<span>${esc(l.sub || '')}</span>${S.done[id] ? '<span style="color:var(--ok)">✓ пройдено</span>' : ''}</div>
-      <div class="lesson"><div class="md">${md(l.body)}</div>${facts}</div>
+      <div class="lesson"><div class="md">${body}</div>${facts}${practice}</div>
       <div class="section-tools">
         ${l.quiz && l.quiz.length ? `<button class="btn primary" data-act="quiz">Проверить себя · ${l.quiz.length} ${plural(l.quiz.length, ['вопрос', 'вопроса', 'вопросов'])}</button>` : ''}
         ${l.cards && l.cards.length ? `<button class="btn" data-act="cards">Карточки урока · ${l.cards.length}</button>` : ''}
@@ -203,6 +277,7 @@
       <div id="activity"></div>
       <nav class="pager">${prev ? `<a href="#/l/${prev.id}"><small>‹ Назад</small>${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="next" href="#/l/${next.id}"><small>Дальше ›</small>${esc(next.title)}</a>` : `<a class="next" href="#/c/${l.course}"><small>Курс завершён ›</small>К списку уроков</a>`}</nav>
     </article>`, l.title);
+    mountLabs(main());
     const act = $('#activity');
     const finish = () => { if (!S.done[id]) { S.done[id] = today(); save(); addXP(15); } };
     main().onclick = e => {
@@ -243,7 +318,7 @@
     const end = () => {
       renderChip(); const pct = Math.round(100 * score / items.length);
       const wrong = log.filter(x => !x.ok);
-      root.innerHTML = `<div class="panel result"><div class="big">${pct}%</div><p>${score} из ${items.length} верно. ${pct >= 90 ? 'Отлично.' : pct >= 70 ? 'Хорошо — повторите ошибки.' : 'Стоит перечитать конспект.'}</p>
+      root.innerHTML = `<div class="panel result"><div class="big">${pct}%</div><p>${score} из ${items.length} верно. ${pct >= 90 ? 'Отлично.' : pct >= 70 ? 'Хорошо — повторите ошибки.' : 'Стоит перечитать урок.'}</p>
         ${wrong.length ? `<div class="review"><b>Разбор ошибок</b><ol>${wrong.map(x => `<li>${inline(x.q.q)}<br><span style="color:var(--bad)">Ваш ответ: ${inline(x.q.a[x.k])}</span><br><span style="color:var(--ok)">Верно: ${inline(x.q.a[x.q.c])}</span>${x.q.e ? '<br><small class="muted">' + inline(x.q.e) + '</small>' : ''}${x.q.lesson ? ` <a href="#/l/${x.q.lesson}">урок</a>` : ''}</li>`).join('')}</ol></div>` : ''}
         <div class="btn-row" style="justify-content:center"><button class="btn primary" data-r>Ещё раз</button>${wrong.length ? '<button class="btn" data-w>Только ошибки</button>' : ''}</div></div>`;
       $('[data-r]', root).onclick = () => quiz(root, qs, opt);
@@ -282,9 +357,214 @@
     show();
   }
 
+  /* ——— Генераторы задач ——— */
+  const R = {
+    rand: () => rnd(),
+    int: (a, b) => a + Math.floor(rnd() * (b - a + 1)),
+    nz: (a, b) => { let x; do x = R.int(a, b); while (x === 0); return x; },
+    pick: a => a[Math.floor(rnd() * a.length)],
+    shuffle: a => shuffle(a),
+    sample: (a, n) => pick(a, n),
+    gcd: (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; },
+    lcm: (a, b) => Math.abs(a * b) / R.gcd(a, b),
+    round: (x, k = 6) => Math.round(x * 10 ** k) / 10 ** k,
+    // число по-русски: десятичная запятая, минус «−»
+    num: x => { const v = R.round(x, 6); return (v < 0 ? '−' : '') + String(Math.abs(v)).replace('.', ','); },
+    // число для TeX: {,} — запятая без пробела
+    tn: x => { const v = R.round(x, 6); return (v < 0 ? '-' : '') + String(Math.abs(v)).replace('.', '{,}'); },
+    // несократимая дробь в TeX
+    frac: (n, d) => { if (d < 0) { n = -n; d = -d; } const g = R.gcd(n, d) || 1; n /= g; d /= g; if (d === 1) return String(n); return (n < 0 ? '-' : '') + '\\frac{' + Math.abs(n) + '}{' + d + '}'; },
+    // одночлен со знаком: R.term(-1,'x',false) → "- x"
+    term: (k, v, first) => { if (k === 0) return ''; const s = k < 0 ? '-' : (first ? '' : '+'); const a = Math.abs(k); const body = v ? ((a === 1 ? '' : R.tn(a)) + v) : R.tn(a); return (first ? s : ' ' + s + ' ') + body; },
+    // многочлен по коэффициентам от старшего: R.poly([1,-3,2]) → "x^{2} - 3x + 2"
+    poly: (cs, v = 'x') => { const n = cs.length - 1; let out = ''; cs.forEach((k, i) => { const p = n - i; const vv = p === 0 ? '' : p === 1 ? v : v + '^{' + p + '}'; const t = R.term(k, vv, out === ''); out += t; }); return out || '0'; },
+    signed: x => x < 0 ? '(' + R.tn(x) + ')' : R.tn(x)
+  };
+  P.R = R;
+
+  // Разбор ответа: числа (запятая или точка), дроби, √, π, ^, скобки, неявное умножение.
+  function evalExpr(src) {
+    const mx = String(src).trim().replace(/[−–—]/g, '-').match(/^(-?)(\d+)\s+(\d+)\s*\/\s*(\d+)$/); // смешанное число «2 1/3»
+    if (mx) return (mx[1] ? -1 : 1) * (+mx[2] + mx[3] / mx[4]);
+    const s = String(src).toLowerCase().replace(/\s+/g, '').replace(/[−–—]/g, '-').replace(/[×·*]/g, '*').replace(/[:÷]/g, '/').replace(/,/g, '.').replace(/pi|пи/g, 'π').replace(/sqrt|корень/g, '√');
+    let i = 0;
+    const peek = () => s[i];
+    function expr() { let v = term(); while (peek() === '+' || peek() === '-') { const o = s[i++]; const r = term(); v = o === '+' ? v + r : v - r; } return v; }
+    function term() { let v = unary(); for (;;) { const c = peek(); if (c === '*' || c === '/') { i++; const r = unary(); v = c === '*' ? v * r : v / r; } else if (c && /[\d.(√π]/.test(c)) { v *= unary(); } else return v; } }
+    function unary() { if (peek() === '-') { i++; return -unary(); } if (peek() === '+') { i++; return unary(); } return power(); }
+    function power() { const b = atom(); if (peek() === '^') { i++; return Math.pow(b, unary()); } return b; }
+    function atom() {
+      const c = peek();
+      if (c === '(') { i++; const v = expr(); if (peek() !== ')') throw 0; i++; return v; }
+      if (c === '√') { i++; return Math.sqrt(power()); }
+      if (c === 'π') { i++; return Math.PI; }
+      const m = s.slice(i).match(/^\d*\.?\d+/); if (!m) throw 0; i += m[0].length; return parseFloat(m[0]);
+    }
+    try { const v = expr(); if (i !== s.length || !isFinite(v)) return NaN; return v; } catch (e) { return NaN; }
+  }
+  const normTxt = s => String(s).toLowerCase().replace(/\s+/g, '').replace(/[−–—]/g, '-').replace(/,/g, '.').replace(/ё/g, 'е');
+  function splitList(raw) {
+    let s = String(raw).trim().replace(/^[({[]|[)}\]]$/g, '');
+    let parts = s.split(/\s*;\s*|\s+и\s+|\s+or\s+/);
+    if (parts.length === 1 && /,\s/.test(s)) parts = s.split(/,\s+/);
+    return parts.map(x => x.trim()).filter(Boolean);
+  }
+  function checkAnswer(t, raw) {
+    if (!String(raw).trim()) return null;
+    const near = (v, a) => Math.abs(v - a) <= (t.tol != null ? t.tol : 1e-6 * Math.max(1, Math.abs(a)));
+    if (typeof t.a === 'string') return [t.a, ...(t.alt || [])].some(x => normTxt(x) === normTxt(raw));
+    if (Array.isArray(t.a)) {
+      if (!t.a.length) return /^(нет|∅|0корней|нетрешений|нетрешения|нет корней)$/.test(normTxt(raw)) || normTxt(raw).startsWith('нет');
+      const vs = splitList(raw).map(evalExpr); if (vs.length !== t.a.length || vs.some(isNaN)) return false;
+      if (t.ordered) return vs.every((v, k) => near(v, t.a[k]));
+      const a = t.a.slice().sort((x, y) => x - y), b = vs.slice().sort((x, y) => x - y);
+      return b.every((v, k) => near(v, a[k]));
+    }
+    const v = evalExpr(raw); if (isNaN(v)) return false;
+    return near(v, t.a);
+  }
+  const showAns = t => t.show != null ? t.show : typeof t.a === 'number' ? R.num(t.a) : Array.isArray(t.a) ? (t.a.length ? t.a.map(R.num).join('; ') : 'нет корней') : t.a;
+  const genTask = (d, lv) => { for (let k = 0; k < 30; k++) { try { const t = d.gen(lv, R); if (t) { t.drill = d; t.lv = lv; return t; } } catch (e) { console.error(d.id, e); } } return null; };
+
+  function taskHTML(t) {
+    const opts = t.opts ? shuffle(t.opts.map((o, k) => ({ o, k }))) : null;
+    return { opts, html: `<p class="q-text">${inline(t.q)}</p>${t.svg ? '<div class="task-fig">' + t.svg + '</div>' : ''}
+      ${opts ? `<div class="opts">${opts.map(x => `<button class="opt" data-k="${x.k}">${inline(x.o)}</button>`).join('')}</div>` :
+        `<form class="ans-form" autocomplete="off"><div class="ans-row"><input class="ans-in" type="text" inputmode="${t.kb || 'text'}" aria-label="Ответ" placeholder="${esc(t.ph || L.drills.ph)}" enterkeyhint="done" autocapitalize="off" spellcheck="false">${t.unit ? '<span class="unit">' + inline(t.unit) + '</span>' : ''}<button class="btn primary" type="submit">Проверить</button></div>
+        <div class="keys">${['−', '/', ',', ';', '√', 'π', '^', '(', ')'].map(k => `<button type="button" data-key="${k === '−' ? '-' : k}">${k}</button>`).join('')}</div></form>`}
+      ${t.hint ? `<details class="hint"><summary>Подсказка</summary><p>${inline(t.hint)}</p></details>` : ''}<div class="fb"></div>` };
+  }
+  // Один экземпляр задачи: рисует, принимает ответ, вызывает done(ok)
+  function runTask(box, t, opt, done) {
+    const { html } = taskHTML(t);
+    box.innerHTML = html;
+    const fin = ok => {
+      $$('.opt', box).forEach(b => { b.disabled = true; if (+b.dataset.k === 0) b.classList.add('right'); });
+      const inp = $('.ans-in', box); if (inp) { inp.disabled = true; inp.classList.add(ok ? 'ok' : 'bad'); }
+      $$('.ans-form button', box).forEach(b => { b.disabled = true; });
+      if (opt.quick) { done(ok); return; }
+      $('.fb', box).innerHTML = `<div class="explain ${ok ? 'good' : 'badx'}"><strong>${ok ? 'Верно!' : 'Неверно.'}</strong> ${ok && !t.sol ? '' : 'Ответ: ' + inline(showAns(t))}${t.sol ? '<div class="sol">' + md(t.sol) + '</div>' : ''}</div><div class="btn-row"><button class="btn primary" data-next>${opt.last ? 'Итог' : 'Дальше'}</button></div>`;
+      const nb = $('[data-next]', box); nb.focus({ preventScroll: true }); nb.onclick = () => done(ok);
+    };
+    $$('.opt', box).forEach(b => b.onclick = () => { const ok = +b.dataset.k === 0; if (!ok) b.classList.add('wrong'); fin(ok); });
+    const form = $('.ans-form', box);
+    if (form) {
+      const inp = $('.ans-in', box);
+      if (!opt.noFocus) setTimeout(() => inp.focus({ preventScroll: true }), 30);
+      form.onsubmit = e => { e.preventDefault(); const r = checkAnswer(t, inp.value); if (r === null) { inp.focus(); return; } fin(r); };
+      $$('[data-key]', box).forEach(b => b.onclick = () => { const k = b.dataset.key; const p = inp.selectionStart != null ? inp.selectionStart : inp.value.length; inp.value = inp.value.slice(0, p) + k + inp.value.slice(inp.selectionEnd != null ? inp.selectionEnd : p); inp.focus(); inp.setSelectionRange(p + k.length, p + k.length); });
+    }
+  }
+  function countSolved(ok) { if (ok) { S.best.solved = (S.best.solved || 0) + 1; } save(); }
+
+  // Сессия из N задач. src: () => задача
+  function session(root, src, opt) {
+    const N = opt.n || 10; let i = 0, score = 0; const log = [];
+    const step = () => {
+      const t = src(i); if (!t) { root.innerHTML = '<div class="panel">Не удалось создать задачу.</div>'; return; }
+      root.innerHTML = `<div class="panel" aria-live="polite"><div class="q-top"><span>${esc(opt.title || t.drill.title)}${opt.showDrill ? ' · <a href="#/drill/' + esc(t.drill.id) + '">' + esc(t.drill.title) + '</a>' : ''}</span><span>${i + 1} / ${N}</span></div><div class="bar" style="margin-bottom:14px"><i style="width:${100 * i / N}%"></i></div><div class="task"></div></div>`;
+      runTask($('.task', root), t, { last: i + 1 === N }, ok => { if (ok) score++; log.push({ t, ok }); countSolved(ok); if (ok) { S.xp += 2; save(); renderChip(); } i++; i < N ? step() : end(); });
+    };
+    const end = () => {
+      const wrong = log.filter(x => !x.ok);
+      root.innerHTML = `<div class="panel result"><div class="big">${score}/${N}</div><p>${score === N ? 'Безупречно!' : score >= .8 * N ? 'Отлично — уровень засчитан.' : score >= .5 * N ? 'Неплохо. Для зачёта уровня нужно 8 из 10.' : 'Посмотрите разбор и попробуйте ещё раз.'}</p>
+        ${wrong.length ? `<div class="review"><b>Разбор ошибок</b><ol>${wrong.map(x => `<li>${inline(x.t.q)}<br><span style="color:var(--ok)">Ответ: ${inline(showAns(x.t))}</span>${x.t.sol ? '<div class="sol">' + md(x.t.sol) + '</div>' : ''}</li>`).join('')}</ol></div>` : ''}
+        <div class="btn-row" style="justify-content:center"><button class="btn primary" data-r>Ещё ${N} задач</button>${opt.after || ''}</div></div>`;
+      $('[data-r]', root).onclick = () => session(root, src, opt);
+      if (opt.onEnd) opt.onEnd(score, N);
+      addXP(score >= .8 * N ? 10 : 3);
+    };
+    step();
+  }
+  function sprint(root, d, lv) {
+    root.innerHTML = `<div class="panel result"><p>60 секунд: решите как можно больше задач. Ошибка не штрафуется, но время идёт. Рекорд: ${S.drills[d.id] && S.drills[d.id].sp || 0}.</p><button class="btn primary" id="go">Старт</button></div>`;
+    $('#go', root).onclick = () => {
+      let score = 0, left = 60;
+      root.innerHTML = `<div class="panel"><div class="q-top"><span class="timer" id="tm">60</span><span>Решено: <b id="sc">0</b></span></div><div class="task"></div></div>`;
+      const next = () => { const t = genTask(d, lv); runTask($('.task', root), t, { quick: true }, ok => { if (ok) { score++; $('#sc', root).textContent = score; } countSolved(ok); setTimeout(() => { if (left > 0 && $('.task', root)) next(); }, ok ? 250 : 900); }); };
+      next();
+      const tm = setInterval(() => {
+        if (!$('#tm', root) || !root.isConnected) { clearInterval(tm); return; }
+        left--; $('#tm', root).textContent = left;
+        if (left <= 0) {
+          clearInterval(tm); const st = S.drills[d.id] = S.drills[d.id] || {}; const rec = score > (st.sp || 0); if (rec) st.sp = score; if (score > (S.best.sprint || 0)) S.best.sprint = score; save();
+          root.innerHTML = `<div class="panel result"><div class="big">${score}</div><p>${rec ? 'Новый рекорд!' : 'Рекорд: ' + st.sp}</p><div class="btn-row" style="justify-content:center"><button class="btn primary" id="again">Ещё раз</button></div></div>`;
+          $('#again', root).onclick = () => sprint(root, d, lv); addXP(score);
+        }
+      }, 1000);
+    };
+  }
+
+  V.drills = () => {
+    const f = new URLSearchParams(location.hash.split('?')[1] || '').get('c') || 'all';
+    const list = P.drills.filter(d => f === 'all' || d.course === +f);
+    const groups = courses.filter(c => f === 'all' || c.n === +f).map(c => ({ c, ds: list.filter(d => d.course === c.n) })).filter(g => g.ds.length);
+    mount(`<h1>${esc(L.drills.title)}</h1><p class="lead">${esc(L.drills.desc)} Уровень засчитывается за 8 верных из 10 — так зажигаются звёзды ★. Решено задач: ${solved()}.</p>
+      <div class="btn-row"><a class="btn primary" href="#/daily">☀ Разминка дня</a><a class="btn" href="#/drill/mix${f === 'all' ? '' : '?c=' + f}">🎲 Смешанные задачи</a></div>
+      <div class="chips">${['all', ...courses.map(c => c.n)].map(s => `<a class="chip" href="#/drills?c=${s}" aria-pressed="${String(s) === f}">${s === 'all' ? 'Все' : 'Курс ' + courseOf(s).roman}</a>`).join('')}</div>
+      ${groups.map(g => `<h2 ${cs(g.c.n)}><span style="color:var(--c)">${g.c.roman}.</span> ${esc(g.c.title)} <small class="muted" style="font:400 15px var(--sans)">${esc(g.c.grade)}</small></h2><div class="grid">${g.ds.map(drillTile).join('')}</div>`).join('')}`, L.drills.title);
+  };
+
+  V.drill = id => {
+    const qs = new URLSearchParams(location.hash.split('?')[1] || '');
+    if (id === 'mix') {
+      const f = qs.get('c') || 'all'; const pool = P.drills.filter(d => f === 'all' || d.course === +f);
+      mount(`<div class="narrow"><nav class="crumbs"><a href="#/drills">${esc(L.drills.title)}</a> / <span>Смешанные задачи</span></nav><h1>Смешанные задачи</h1><p class="lead">${f === 'all' ? 'Вся программа' : 'Курс ' + courseOf(+f).roman + '. ' + esc(courseOf(+f).title)}: 10 задач из разных генераторов.</p>
+        <div class="chips">${['all', ...courses.map(c => c.n)].map(s => `<a class="chip" href="#/drill/mix?c=${s}" aria-pressed="${String(s) === f}">${s === 'all' ? 'Все' : 'Курс ' + courseOf(s).roman}</a>`).join('')}</div><div id="act"></div></div>`, 'Смешанные задачи');
+      const bag = shuffle(pool);
+      return session($('#act'), i => { const d = bag[i % bag.length]; return genTask(d, Math.min(3, Math.max(1, mastered(d.id) + 1 - (rnd() < .5 ? 1 : 0)))); }, { title: 'Смешанные', showDrill: true });
+    }
+    const d = drillById[id]; if (!d) return V.notfound();
+    const levels = d.levels || ['Уровень 1', 'Уровень 2', 'Уровень 3'];
+    const lv = Math.min(levels.length, Math.max(1, +(qs.get('lv') || S.lv[id] || 1)));
+    const mode = qs.get('m') === 'sprint' ? 'sprint' : 'set';
+    S.lv[id] = lv; save();
+    const c = courseOf(d.course);
+    mount(`<div class="narrow" ${cs(d.course)}><nav class="crumbs"><a href="#/drills">${esc(L.drills.title)}</a> / <a href="#/drills?c=${d.course}">Курс ${c ? c.roman : ''}</a></nav>
+      <h1>${esc(d.title)} ${stars(id)}</h1><p class="lead">${esc(d.desc || '')}${d.lesson && byId[d.lesson] ? ` Теория: <a href="#/l/${d.lesson}">${esc(byId[d.lesson].title)}</a>.` : ''}</p>
+      <div class="chips">${levels.map((n, k) => `<a class="chip" href="#/drill/${id}?lv=${k + 1}&m=${mode}" aria-pressed="${k + 1 === lv}">${k + 1 <= mastered(id) ? '★ ' : ''}${esc(n)}</a>`).join('')}</div>
+      <div class="chips"><a class="chip" href="#/drill/${id}?lv=${lv}&m=set" aria-pressed="${mode === 'set'}">10 задач</a><a class="chip" href="#/drill/${id}?lv=${lv}&m=sprint" aria-pressed="${mode === 'sprint'}">⏱ Спринт 60 с</a></div>
+      <div id="act"></div>
+      <p class="muted small-help">Ответ можно вводить дробью (3/4), десятичной (0,75), с корнем (2√3) или π. Несколько ответов — через точку с запятой: 2; −3.</p></div>`, d.title);
+    if (mode === 'sprint') return sprint($('#act'), d, lv);
+    const nxt = lv < levels.length ? `<a class="btn" href="#/drill/${id}?lv=${lv + 1}">Уровень ${lv + 1} ›</a>` : '';
+    session($('#act'), () => genTask(d, lv), { title: levels[lv - 1], after: nxt, onEnd: (sc, n) => { const st = S.drills[id] = S.drills[id] || {}; st.b = Math.max(st.b || 0, sc); if (sc >= .8 * n && (st.m || 0) < lv) { st.m = lv; toast('★ Уровень ' + lv + ' освоен'); } save(); checkAch(); } });
+  };
+
+  // Разминка дня: одинаковые 5 задач для всех в этот день (детерминированный генератор)
+  V.daily = () => {
+    const d0 = today(); let seed = 0; for (const ch of d0) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const mul = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const prev = rnd; rnd = mul;
+    const pool = shuffle(P.drills).slice(0, 5); const tasks = pool.map((d, k) => genTask(d, 1 + (k >= 2) + (k >= 4)));
+    rnd = prev;
+    mount(`<div class="narrow"><nav class="crumbs"><a href="#/drills">${esc(L.drills.title)}</a> / <span>Разминка дня</span></nav><h1>Разминка дня</h1><p class="lead">${new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}: пять задач из разных тем, от простой к сложной. Завтра будут новые.</p><div id="act"></div></div>`, 'Разминка дня');
+    session($('#act'), i => tasks[i], { n: 5, title: 'Разминка', showDrill: true, onEnd: sc => { const first = S.daily[d0] == null; S.daily[d0] = Math.max(sc, S.daily[d0] || 0); save(); if (first) addXP(20); checkAch(); } });
+  };
+
+  /* ——— Лаборатории ——— */
+  const K = { tex, inline, md, esc, R, $, $$, toast };
+  function mountLabs(root) {
+    $$('.lab-slot', root).forEach(el => {
+      const lab = labById[el.dataset.lab]; if (!lab) return;
+      el.innerHTML = `<div class="lab-head"><span>${esc(lab.ico || '🔬')} ${esc(L.labs.title)}: <b>${esc(lab.title)}</b></span><a href="#/lab/${esc(lab.id)}">на весь экран ›</a></div><div class="lab"></div>`;
+      try { lab.render($('.lab', el), K); } catch (e) { console.error(e); el.remove(); }
+    });
+  }
+  V.labs = () => mount(`<h1>${esc(L.labs.title)}</h1><p class="lead">${esc(L.labs.desc)}</p>
+    ${courses.map(c => { const ls = P.labs.filter(x => x.course === c.n); return ls.length ? `<h2 ${cs(c.n)}><span style="color:var(--c)">${c.roman}.</span> ${esc(c.title)}</h2><div class="grid">${ls.map(labTile).join('')}</div>` : ''; }).join('')}`, L.labs.title);
+  V.lab = id => {
+    const lab = labById[id]; if (!lab) return V.notfound();
+    S.visits['lab:' + id] = 1; save();
+    mount(`<div class="narrow wide-lab" ${cs(lab.course)}><nav class="crumbs"><a href="#/labs">${esc(L.labs.title)}</a> / <span>${esc(lab.title)}</span></nav><h1>${esc(lab.title)}</h1><p class="lead">${esc(lab.desc || '')}</p><div class="lab" id="lab"></div>
+      ${lab.lesson && byId[lab.lesson] ? `<p>Теория: <a href="#/l/${lab.lesson}">${esc(byId[lab.lesson].title)}</a></p>` : ''}</div>`, lab.title);
+    lab.render($('#lab'), K);
+    checkAch();
+  };
+
   /* ——— Хаб тренажёров ——— */
-  V.train = () => mount(`<h1>Тренажёры</h1><p class="lead">Семь режимов, которые берут вопросы, карточки и события из всех уроков.</p><div class="grid">${trainTiles().join('')}</div>
-    <h2>По курсам</h2><div class="grid">${courses.map(c => `<div class="tile" ${cs(c.n)}><b style="color:var(--c)">Курс ${c.roman}</b><p>${esc(c.title)}</p><div class="btn-row"><a class="btn" href="#/train/exam/${c.n}">Экзамен</a><a class="btn" href="#/train/cards/${c.n}">Карточки</a></div></div>`).join('')}</div>`, 'Тренажёры');
+  V.train = () => mount(`<h1>Тренажёры</h1><p class="lead">Режимы, которые берут вопросы, карточки и задачи из всех уроков.</p><div class="grid">${trainTiles().join('')}</div>
+    <h2>По курсам</h2><div class="grid">${courses.map(c => `<div class="tile" ${cs(c.n)}><b style="color:var(--c)">Курс ${c.roman}</b><p>${esc(c.title)}</p><div class="btn-row"><a class="btn" href="#/train/exam/${c.n}">Экзамен</a><a class="btn" href="#/train/cards/${c.n}">Карточки</a>${P.drills.some(d => d.course === c.n) ? `<a class="btn" href="#/drill/mix?c=${c.n}">Задачи</a>` : ''}</div></div>`).join('')}</div>`, 'Тренажёры');
 
   const scopeName = s => s === 'all' ? 'вся программа' : 'курс ' + (courseOf(+s) || {}).roman;
   const scopeFilter = s => x => s === 'all' || x.course === +s;
@@ -303,7 +583,7 @@
   };
 
   V.chrono = () => {
-    mount(`<div class="narrow"><nav class="crumbs"><a href="#/train">Тренажёры</a> / <span>Хронология</span></nav><h1>Хронология</h1><p class="lead">Расставьте события от раннего к позднему кнопками ↑ ↓.</p><div id="act"></div></div>`, 'Хронология');
+    mount(`<div class="narrow"><nav class="crumbs"><a href="#/train">Тренажёры</a> / <span>${esc(L.chrono.title)}</span></nav><h1>${esc(L.chrono.title)}</h1><p class="lead">Расставьте события от раннего к позднему кнопками ↑ ↓.</p><div id="act"></div></div>`, L.chrono.title);
     const root = $('#act');
     const round = () => {
       const pool = shuffle(EVENTS); const set = []; const years = new Set();
@@ -324,13 +604,13 @@
   };
 
   V.pairs = () => {
-    mount(`<div class="narrow"><nav class="crumbs"><a href="#/train">Тренажёры</a> / <span>Автор и произведение</span></nav><h1>Автор и произведение</h1><p class="lead">Нажмите произведение, затем его автора.</p><div id="act"></div></div>`, 'Пары');
+    mount(`<div class="narrow"><nav class="crumbs"><a href="#/train">Тренажёры</a> / <span>${esc(L.pairs.title)}</span></nav><h1>${esc(L.pairs.title)}</h1><p class="lead">${esc(L.pairs.lead)}</p><div id="act"></div></div>`, L.pairs.title);
     const root = $('#act');
     const round = () => {
       const set = []; const used = new Set();
       for (const w of shuffle(P.works)) { if (!used.has(w[1])) { used.add(w[1]); set.push(w); } if (set.length === 6) break; }
       const left = shuffle(set), right = shuffle(set); let sel = null, done = 0, miss = 0;
-      root.innerHTML = `<div class="panel"><div class="pairs"><div class="col">${left.map((w, k) => `<button class="pair" data-l="${k}">«${esc(w[0])}»</button>`).join('')}</div><div class="col">${right.map((w, k) => `<button class="pair" data-r="${k}">${esc(w[1])}</button>`).join('')}</div></div><p class="muted" id="pmsg" style="margin:12px 0 0">Ошибок: 0</p></div>`;
+      root.innerHTML = `<div class="panel"><div class="pairs"><div class="col">${left.map((w, k) => `<button class="pair" data-l="${k}">${esc(L.pairs.q1)}${inline(w[0])}${esc(L.pairs.q2)}</button>`).join('')}</div><div class="col">${right.map((w, k) => `<button class="pair" data-r="${k}">${inline(w[1])}</button>`).join('')}</div></div><p class="muted" id="pmsg" style="margin:12px 0 0">Ошибок: 0</p></div>`;
       $$('[data-l]', root).forEach(b => b.onclick = () => { if (b.classList.contains('done')) return; $$('[data-l]', root).forEach(x => x.classList.remove('sel')); b.classList.add('sel'); sel = +b.dataset.l; });
       $$('[data-r]', root).forEach(b => b.onclick = () => {
         if (sel == null || b.classList.contains('done')) return;
@@ -343,12 +623,12 @@
   };
 
   V.heroes = () => {
-    mount(`<div class="narrow"><nav class="crumbs"><a href="#/train">Тренажёры</a> / <span>Чей это герой?</span></nav><h1>Чей это герой?</h1><p class="lead">Серия правильных ответов подряд — ваш рекорд: ${S.best.heroes || 0}.</p><div id="act"></div></div>`, 'Герои');
+    mount(`<div class="narrow"><nav class="crumbs"><a href="#/train">Тренажёры</a> / <span>${esc(L.heroes.title)}</span></nav><h1>${esc(L.heroes.title)}</h1><p class="lead">Серия правильных ответов подряд — ваш рекорд: ${S.best.heroes || 0}.</p><div id="act"></div></div>`, L.heroes.title);
     const root = $('#act'); let run = 0; const worksAll = Array.from(new Set(P.heroes.map(h => h[1])));
     const next = () => {
       const h = P.heroes[Math.floor(Math.random() * P.heroes.length)];
       const opts = shuffle([h[1], ...pick(worksAll.filter(w => w !== h[1]), 3)]);
-      root.innerHTML = `<div class="panel"><div class="q-top"><span>Серия: ${run}</span><span>Рекорд: ${S.best.heroes || 0}</span></div><p class="q-text">${esc(h[0])}</p>${h[2] ? `<p class="muted" style="margin-top:-6px">${esc(h[2])}</p>` : ''}<div class="opts">${opts.map(o => `<button class="opt">«${esc(o)}»</button>`).join('')}</div><div class="fb"></div></div>`;
+      root.innerHTML = `<div class="panel"><div class="q-top"><span>Серия: ${run}</span><span>Рекорд: ${S.best.heroes || 0}</span></div><p class="q-text">${inline(h[0])}</p>${h[2] ? `<p class="muted" style="margin-top:-6px">${inline(h[2])}</p>` : ''}<div class="opts">${opts.map(o => `<button class="opt">${esc(L.heroes.q1)}${inline(o)}${esc(L.heroes.q2)}</button>`).join('')}</div><div class="fb"></div></div>`;
       $$('.opt', root).forEach((b, k) => b.onclick = () => {
         const ok = opts[k] === h[1]; $$('.opt', root).forEach((x, j) => { x.disabled = true; if (opts[j] === h[1]) x.classList.add('right'); }); if (!ok) b.classList.add('wrong');
         if (ok) { run++; if (run > (S.best.heroes || 0)) { S.best.heroes = run; save(); } S.xp += 1; save(); renderChip(); } else run = 0;
@@ -373,34 +653,35 @@
       const t = setInterval(() => {
         if (!$('#tm')) { clearInterval(t); document.removeEventListener('keydown', key); return; }
         left--; $('#tm').textContent = left;
-        if (left <= 0) { clearInterval(t); document.removeEventListener('keydown', key); if (score > (S.best.blitz || 0)) S.best.blitz = score; save(); root.innerHTML = `<div class="panel result"><div class="big">${score}</div><p>Рекорд: ${S.best.blitz}</p><div class="btn-row" style="justify-content:center"><a class="btn primary" href="#/train/blitz" onclick="location.reload()">Ещё раз</a></div></div>`; addXP(score); }
+        if (left <= 0) { clearInterval(t); document.removeEventListener('keydown', key); if (score > (S.best.blitz || 0)) S.best.blitz = score; save(); root.innerHTML = `<div class="panel result"><div class="big">${score}</div><p>Рекорд: ${S.best.blitz}</p><div class="btn-row" style="justify-content:center"><button class="btn primary" id="again">Ещё раз</button></div></div>`; $('#again').onclick = V.blitz; addXP(score); }
       }, 1000);
     };
   };
 
-  /* ——— Тесты преподавателя ——— */
+  /* ——— Тесты / контрольные ——— */
   V.tests = n => {
     if (!n) {
-      return mount(`<div class="narrow"><h1>Тесты преподавателя</h1><p class="lead">Вопросы итоговых тестов по каждому курсу. Сначала ответьте сами (устно или в поле), затем откройте образец и честно оцените себя — так считается готовность.</p>
-        ${Object.keys(P.tests).map(k => { const t = P.tests[k], c = courseOf(+t.course) || {}; return `<a class="continue" href="#/tests/${k}" style="--c:${c.color || 'var(--accent)'}"><div><small>${esc(t.course ? 'Курс ' + t.label : t.label)} · ${t.items.length} вопросов</small><b>${esc(t.title)}</b><div class="bar" style="margin-top:8px;width:220px"><i style="width:${testPct(k)}%"></i></div></div><span style="margin-left:auto;font:700 20px var(--serif)">${testPct(k)}%</span></a>`; }).join('')}</div>`, 'Тесты преподавателя');
+      return mount(`<div class="narrow"><h1>${esc(L.tests.title)}</h1><p class="lead">${esc(L.tests.lead)}</p>
+        ${Object.keys(P.tests).map(k => { const t = P.tests[k], c = courseOf(+t.course) || {}; return `<a class="continue" href="#/tests/${k}" style="--c:${c.color || 'var(--accent)'}"><div><small>${esc(t.course ? 'Курс ' + t.label : t.label)} · ${t.items.length} ${plural(t.items.length, ['задание', 'задания', 'заданий'])}</small><b>${esc(t.title)}</b><div class="bar" style="margin-top:8px;width:220px;max-width:100%"><i style="width:${testPct(k)}%"></i></div></div><span style="margin-left:auto;font:700 20px var(--serif)">${testPct(k)}%</span></a>`; }).join('')}</div>`, L.tests.title);
     }
     const t = P.tests[n]; if (!t) return V.notfound();
     const r = S.tests[n] = S.tests[n] || {};
     let parts = [], cur = null; t.items.forEach((it, i) => { if (it.part && (!cur || cur.name !== it.part)) { cur = { name: it.part, items: [] }; parts.push(cur); } if (!cur) { cur = { name: '', items: [] }; parts.push(cur); } cur.items.push(i); });
-    mount(`<div class="narrow tq"><nav class="crumbs"><a href="#/tests">Тесты преподавателя</a> / <span>${esc(t.label)}</span></nav><h1>${esc(t.title)}</h1>
+    mount(`<div class="narrow tq"><nav class="crumbs"><a href="#/tests">${esc(L.tests.title)}</a> / <span>${esc(t.label)}</span></nav><h1>${esc(t.title)}</h1>
+      ${t.intro ? `<p class="lead">${inline(t.intro)}</p>` : ''}
       <div class="ready"><div class="bar"><i id="rbar" style="width:${testPct(n)}%"></i></div><b id="rpct">${testPct(n)}%</b></div>
-      <p class="muted">Готовность: «знал» = 1, «частично» = ½. <button class="btn ghost" id="onlyWeak" style="min-height:32px;padding:4px 10px">Показать только неуверенные</button></p>
-      ${parts.map(p => `${p.name ? `<h2>${esc(p.name)}</h2>` : ''}${p.items.map(i => { const it = t.items[i]; return `<div class="panel tqi" data-i="${i}" style="margin:12px 0" data-r="${r[i] == null ? '' : r[i]}"><div class="q-top"><span>Вопрос ${i + 1}</span><span class="st">${r[i] === 2 ? '✓ знаю' : r[i] === 1 ? '◐ частично' : r[i] === 0 ? '✗ не знаю' : ''}</span></div><p class="q-text" style="font-size:17px">${inline(it.q)}</p>
-        <button class="btn" data-show>Показать ответ</button><div class="ans" hidden><div class="model">${inline(it.a)}</div>${it.lesson ? `<a href="#/l/${it.lesson}" style="font-size:14px">Перечитать урок</a>` : ''}
-        <div class="selfrate"><button class="btn" data-s="0">Не знал</button><button class="btn" data-s="1">Частично</button><button class="btn primary" data-s="2">Знал</button></div></div></div>`; }).join('')}`).join('')}
+      <p class="muted">Готовность: «решил» = 1, «частично» = ½. <button class="btn ghost" id="onlyWeak" style="min-height:32px;padding:4px 10px">Показать только нерешённые</button></p>
+      ${parts.map(p => `${p.name ? `<h2>${esc(p.name)}</h2>` : ''}${p.items.map(i => { const it = t.items[i]; return `<div class="panel tqi" data-i="${i}" style="margin:12px 0" data-r="${r[i] == null ? '' : r[i]}"><div class="q-top"><span>Задание ${i + 1}${it.pts ? ' · ' + it.pts + ' ' + plural(it.pts, ['балл', 'балла', 'баллов']) : ''}</span><span class="st">${r[i] === 2 ? '✓ решил' : r[i] === 1 ? '◐ частично' : r[i] === 0 ? '✗ не решил' : ''}</span></div><div class="q-text md" style="font-size:17px">${md(it.q)}</div>
+        <button class="btn" data-show>Показать решение</button><div class="ans" hidden><div class="model md">${md(it.a)}</div>${it.lesson ? `<a href="#/l/${it.lesson}" style="font-size:14px">Перечитать урок</a>` : ''}
+        <div class="selfrate"><button class="btn" data-s="0">Не решил</button><button class="btn" data-s="1">Частично</button><button class="btn primary" data-s="2">Решил</button></div></div></div>`; }).join('')}`).join('')}
     </div>`, t.title);
     main().onclick = e => {
       const box = e.target.closest('.tqi'); if (box) {
         const i = +box.dataset.i;
         if (e.target.closest('[data-show]')) { $('.ans', box).hidden = false; e.target.closest('[data-show]').remove(); }
-        const s = e.target.closest('[data-s]'); if (s) { const v = +s.dataset.s; const first = r[i] == null; r[i] = v; box.dataset.r = v; $('.st', box).textContent = v === 2 ? '✓ знаю' : v === 1 ? '◐ частично' : '✗ не знаю'; save(); if (first) addXP(v === 2 ? 3 : 1); $('#rbar').style.width = testPct(n) + '%'; $('#rpct').textContent = testPct(n) + '%'; checkAch(); const nx = box.nextElementSibling; if (nx && nx.classList.contains('tqi')) nx.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        const s = e.target.closest('[data-s]'); if (s) { const v = +s.dataset.s; const first = r[i] == null; r[i] = v; box.dataset.r = v; $('.st', box).textContent = v === 2 ? '✓ решил' : v === 1 ? '◐ частично' : '✗ не решил'; save(); if (first) addXP(v === 2 ? 3 : 1); $('#rbar').style.width = testPct(n) + '%'; $('#rpct').textContent = testPct(n) + '%'; checkAch(); const nx = box.nextElementSibling; if (nx && nx.classList.contains('tqi')) nx.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       }
-      if (e.target.id === 'onlyWeak') { const on = e.target.dataset.on !== '1'; e.target.dataset.on = on ? '1' : '0'; e.target.textContent = on ? 'Показать все' : 'Показать только неуверенные'; $$('.tqi').forEach(b => { b.style.display = on && b.dataset.r === '2' ? 'none' : ''; }); }
+      if (e.target.id === 'onlyWeak') { const on = e.target.dataset.on !== '1'; e.target.dataset.on = on ? '1' : '0'; e.target.textContent = on ? 'Показать все' : 'Показать только нерешённые'; $$('.tqi').forEach(b => { b.style.display = on && b.dataset.r === '2' ? 'none' : ''; }); }
     };
   };
 
@@ -410,12 +691,13 @@
     const list = EVENTS.filter(e => f === 'all' || e.course === +f);
     const cent = y => y < 0 ? Math.ceil(-y / 100) + ' век до н. э.' : Math.floor((y - 1) / 100 + 1) + ' век';
     let html = '', curC = '';
-    for (const e of list) { const c = cent(e.y); if (c !== curC) { html += `<h3>${c}</h3>`; curC = c; } html += `<div class="ev" ${cs(e.course)}><b>${esc(e.label)}</b> — ${inline(e.t)} <a href="#/l/${e.lesson}">урок</a></div>`; }
-    mount(`<div class="narrow"><h1>Лента времени</h1><p class="lead">${EVENTS.length} событий из всех уроков. Фильтр по курсу:</p><div class="chips">${['all', ...courses.map(c => c.n)].map(s => `<a class="chip" href="#/timeline?c=${s}" aria-pressed="${String(s) === f}">${s === 'all' ? 'Все' : 'Курс ' + courseOf(s).roman}</a>`).join('')}</div><div class="tl">${html}</div></div>`, 'Лента времени');
+    for (const e of list) { const c = cent(e.y); if (c !== curC) { html += `<h3>${c}</h3>`; curC = c; } html += `<div class="ev" ${cs(e.course)}><b>${esc(e.label)}</b> — ${inline(e.t)} <a href="#/l/${e.lesson}">${esc(L.lessonWord)}</a></div>`; }
+    mount(`<div class="narrow"><h1>${esc(L.timeline.title)}</h1><p class="lead">${EVENTS.length} событий из всех уроков. Фильтр по курсу:</p><div class="chips">${['all', ...courses.map(c => c.n)].map(s => `<a class="chip" href="#/timeline?c=${s}" aria-pressed="${String(s) === f}">${s === 'all' ? 'Все' : 'Курс ' + courseOf(s).roman}</a>`).join('')}</div><div class="tl">${html || '<p class="muted">В этом курсе событий нет.</p>'}</div></div>`, L.timeline.title);
   };
 
   /* ——— Карта мест ——— */
   V.places = () => {
+    if (!P.places.length || !P.outline) return V.notfound();
     S.visits.places = 1; save();
     const o = P.outline; const W = 600, H = 380;
     const pr = (lon, lat) => [((lon - o.box[0]) / (o.box[2] - o.box[0])) * W, ((o.box[3] - lat) / (o.box[3] - o.box[1])) * H];
@@ -436,16 +718,16 @@
     const items = P.glossary.slice().sort((a, b) => a[0].localeCompare(b[0], 'ru'));
     const letters = Array.from(new Set(items.map(g => g[0][0].toUpperCase())));
     mount(`<div class="narrow"><h1>Словарь терминов</h1><input class="filter" id="gf" type="search" placeholder="Найти термин" value="${esc(q0)}" aria-label="Фильтр терминов">
-      <div class="az">${letters.map(l => `<a href="#/glossary" data-l="${l}">${l}</a>`).join('')}</div><dl class="gl" id="gl"></dl>
+      <div class="az">${letters.map(l => `<a href="#/glossary" data-l="${esc(l)}">${esc(l)}</a>`).join('')}</div><dl class="gl" id="gl"></dl>
       <a class="btn" href="#/train/cards/terms">Учить термины карточками</a></div>`, 'Словарь');
-    const draw = q => { q = q.toLowerCase(); $('#gl').innerHTML = items.filter(g => !q || (g[0] + ' ' + g[1]).toLowerCase().includes(q)).map(g => `<dt id="g-${esc(g[0])}">${esc(g[0])}</dt><dd>${inline(g[1])}</dd>`).join('') || '<p class="muted">Ничего не найдено.</p>'; };
+    const draw = q => { q = q.toLowerCase(); $('#gl').innerHTML = items.filter(g => !q || (g[0] + ' ' + g[1]).toLowerCase().includes(q)).map(g => `<dt id="g-${esc(g[0])}">${inline(g[0])}</dt><dd>${inline(g[1])}</dd>`).join('') || '<p class="muted">Ничего не найдено.</p>'; };
     $('#gf').oninput = e => draw(e.target.value); draw(q0);
     $$('.az a').forEach(a => a.onclick = e => { e.preventDefault(); $('#gf').value = ''; draw(''); const t = $$('#gl dt').find(d => d.textContent[0].toUpperCase() === a.dataset.l); if (t) t.scrollIntoView({ behavior: 'smooth' }); });
   };
 
-  /* ——— Писатели ——— */
+  /* ——— Персоналии ——— */
   V.authors = () => {
-    mount(`<h1>${esc(C.people.title)}</h1><input class="filter" id="af" type="search" placeholder="Имя, направление, произведение" aria-label="Фильтр писателей"><div class="grid" id="al"></div>`, C.people.title);
+    mount(`<h1>${esc(C.people.title)}</h1><input class="filter" id="af" type="search" placeholder="Имя, открытие, эпоха" aria-label="Фильтр"><div class="grid" id="al"></div>`, C.people.title);
     const draw = q => { q = q.toLowerCase(); $('#al').innerHTML = P.authors.filter(a => !q || JSON.stringify(a).toLowerCase().includes(q)).map(a => `<a class="tile author" href="${a.lesson ? '#/l/' + a.lesson : '#/authors'}" ${cs(a.course)}><b>${esc(a.name)}</b><span class="yrs">${esc(a.years)}</span><p>${inline(a.note)}</p></a>`).join(''); };
     $('#af').oninput = e => draw(e.target.value); draw('');
   };
@@ -455,15 +737,15 @@
     const r = rankOf(S.xp);
     mount(`<div class="narrow"><h1>Мой прогресс</h1>
       <div class="panel rank-card"><div class="seal" aria-hidden="true">${esc(C.monogram)}</div><div><b style="font:700 22px var(--serif)">${esc(r.name)}</b><p class="muted" style="margin:4px 0 8px">${S.xp} опыта${r.next ? ' · до звания «' + esc(r.next[1]) + '» осталось ' + (r.next[0] - S.xp) : ' · высшее звание'}</p><div class="bar"><i style="width:${r.next ? Math.round(100 * (S.xp - r.min) / (r.next[0] - r.min)) : 100}%"></i></div></div></div>
-      <div class="stats"><div class="stat"><b>${Object.keys(S.done).length}</b><span>уроков</span></div><div class="stat"><b>${correctCount()}</b><span>верных ответов</span></div><div class="stat"><b>${S.best.cardsSeen || 0}</b><span>повторений карточек</span></div><div class="stat"><b>${streak()}</b><span>дней подряд</span></div></div>
-      <h2>Готовность по курсам</h2>${courses.map(c => `<div style="margin:10px 0" ${cs(c.n)}><div style="display:flex;justify-content:space-between"><span>Курс ${c.roman}. ${esc(c.title)}</span><span class="muted">${doneIn(c.n)}/${lessonsOf(c.n).length} · тест ${testPct(c.n)}%</span></div><div class="bar"><i style="width:${Math.round(100 * doneIn(c.n) / Math.max(1, lessonsOf(c.n).length))}%"></i></div></div>`).join('')}
+      <div class="stats"><div class="stat"><b>${Object.keys(S.done).length}</b><span>уроков</span></div>${P.drills.length ? `<div class="stat"><b>${solved()}</b><span>задач решено</span></div><div class="stat"><b>${P.drills.reduce((s, d) => s + mastered(d.id), 0)}</b><span>звёзд из ${P.drills.length * 3}</span></div>` : ''}<div class="stat"><b>${correctCount()}</b><span>верных ответов</span></div><div class="stat"><b>${S.best.cardsSeen || 0}</b><span>повторений карточек</span></div><div class="stat"><b>${streak()}</b><span>дней подряд</span></div></div>
+      <h2>Готовность по курсам</h2>${courses.map(c => `<div style="margin:10px 0" ${cs(c.n)}><div style="display:flex;justify-content:space-between;gap:10px"><span>Курс ${c.roman}. ${esc(c.title)}</span><span class="muted">${doneIn(c.n)}/${lessonsOf(c.n).length}${P.tests[c.n] ? ' · ' + esc(L.tests.short.toLowerCase()) + ' ' + testPct(c.n) + '%' : ''}</span></div><div class="bar"><i style="width:${Math.round(100 * doneIn(c.n) / Math.max(1, lessonsOf(c.n).length))}%"></i></div></div>`).join('')}
       <h2>Достижения · ${ACH.filter(a => S.ach[a[0]]).length} из ${ACH.length}</h2>
       <div class="ach">${ACH.map(a => `<div class="${S.ach[a[0]] ? '' : 'off'}"><i>${a[1]}</i><span><b>${esc(a[2])}</b><small>${esc(a[3])}</small></span></div>`).join('')}</div>
       <h2>Звания</h2><ol>${C.ranks.map(x => `<li>${esc(x[1])} — от ${x[0]} опыта</li>`).join('')}</ol>
       <h2>Данные</h2><p class="muted">Прогресс хранится только в этом браузере. Перенесите его на другое устройство через файл.</p>
       <div class="btn-row"><button class="btn" id="exp">Скачать прогресс</button><label class="btn">Загрузить прогресс<input type="file" id="imp" accept="application/json" hidden></label><button class="btn ghost" id="rst">Сбросить всё</button></div></div>`, 'Мой прогресс');
     $('#exp').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(S)], { type: 'application/json' })); a.download = KEY.replace(/\W+/g, '-') + '-progress.json'; a.click(); };
-    $('#imp').onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { try { const d = JSON.parse(t); if (typeof d.xp !== 'number') throw 0; Object.keys(S).forEach(k => delete S[k]); Object.assign(S, d); save(); toast('Прогресс загружен'); route(); } catch (err) { toast('Файл не подходит: это не файл прогресса «' + C.name + '»'); } }); };
+    $('#imp').onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { try { const d = JSON.parse(t); if (typeof d.xp !== 'number') throw 0; Object.keys(S).forEach(k => delete S[k]); Object.assign(S, { drills: {}, daily: {}, lv: {} }, d); save(); toast('Прогресс загружен'); route(); } catch (err) { toast('Файл не подходит: это не файл прогресса «' + C.name + '»'); } }); };
     $('#rst').onclick = () => { if (confirm('Удалить весь прогресс? Это нельзя отменить.')) { localStorage.removeItem(KEY); location.hash = '#/'; location.reload(); } };
   };
 
@@ -472,11 +754,13 @@
 
   /* ——— Поиск ——— */
   const IDX = [];
-  P.lessons.forEach(l => IDX.push({ t: l.title, s: 'Урок · курс ' + courseOf(l.course).roman, h: '#/l/' + l.id, x: (l.title + ' ' + (l.sub || '') + ' ' + l.body).toLowerCase() }));
+  P.lessons.forEach(l => IDX.push({ t: l.title, s: 'Урок · курс ' + courseOf(l.course).roman, h: '#/l/' + l.id, x: (l.title + ' ' + (l.sub || '') + ' ' + strip(l.body)).toLowerCase() }));
+  P.drills.forEach(d => IDX.push({ t: d.title, s: L.drills.title + ' · курс ' + (courseOf(d.course) || {}).roman, h: '#/drill/' + d.id, x: (d.title + ' ' + (d.desc || '') + ' ' + (d.tags || '')).toLowerCase() }));
+  P.labs.forEach(d => IDX.push({ t: d.title, s: L.labs.title, h: '#/lab/' + d.id, x: (d.title + ' ' + (d.desc || '') + ' ' + (d.tags || '')).toLowerCase() }));
   P.authors.forEach(a => IDX.push({ t: a.name, s: C.people.one + ' · ' + a.years, h: a.lesson ? '#/l/' + a.lesson : '#/authors', x: (a.name + ' ' + a.note).toLowerCase() }));
-  P.glossary.forEach(g => IDX.push({ t: g[0], s: 'Термин', h: '#/glossary?q=' + encodeURIComponent(g[0]), x: (g[0] + ' ' + g[1]).toLowerCase() }));
-  P.works.forEach(w => IDX.push({ t: '«' + w[0] + '»', s: 'Произведение · ' + w[1], h: '#/authors', x: (w[0] + ' ' + w[1]).toLowerCase() }));
-  [['Тесты', '#/tests'], [C.places.title, '#/' + PL], ['Лента времени', '#/timeline'], ['Тренажёры', '#/train'], ['Мой прогресс', '#/me']].forEach(([t, h]) => IDX.push({ t, s: 'Раздел', h, x: t.toLowerCase() }));
+  P.glossary.forEach(g => IDX.push({ t: strip(g[0]), s: 'Термин', h: '#/glossary?q=' + encodeURIComponent(g[0]), x: strip(g[0] + ' ' + g[1]).toLowerCase() }));
+  P.works.forEach(w => IDX.push({ t: strip(w[1]), s: L.pairs.item + ' · ' + strip(w[0]), h: '#/train/pairs', x: strip(w[0] + ' ' + w[1]).toLowerCase() }));
+  [[L.tests.title, '#/tests'], [L.timeline.title, '#/timeline'], ['Тренажёры', '#/train'], ['Мой прогресс', '#/me'], ...(P.drills.length ? [[L.drills.title, '#/drills'], ['Разминка дня', '#/daily']] : []), ...(P.labs.length ? [[L.labs.title, '#/labs']] : []), ...(P.places.length ? [[C.places.title, '#/' + PL]] : [])].forEach(([t, h]) => IDX.push({ t, s: 'Раздел', h, x: t.toLowerCase() }));
   let act = 0;
   function search(q) {
     q = q.trim().toLowerCase(); const ul = $('#sres');
@@ -484,7 +768,7 @@
     const words = q.split(/\s+/);
     const res = IDX.map(it => { let sc = 0; for (const w of words) { if (!it.x.includes(w)) return null; if (it.t.toLowerCase().includes(w)) sc += 5; sc += 1; } return { it, sc }; }).filter(Boolean).sort((a, b) => b.sc - a.sc).slice(0, 25);
     act = 0;
-    ul.innerHTML = res.length ? res.map((r, i) => `<li><a href="${r.it.h}" class="${i === 0 ? 'act' : ''}">${esc(r.it.t)}<small>${esc(r.it.s)}</small></a></li>`).join('') : '<li class="empty">Ничего не найдено. Попробуйте фамилию автора или название произведения.</li>';
+    ul.innerHTML = res.length ? res.map((r, i) => `<li><a href="${r.it.h}" class="${i === 0 ? 'act' : ''}">${esc(r.it.t)}<small>${esc(r.it.s)}</small></a></li>`).join('') : '<li class="empty">' + esc(L.notFoundHint) + '</li>';
   }
   function openSearch() { $('#search').classList.add('open'); const i = $('#sin'); i.value = ''; search(''); setTimeout(() => i.focus(), 20); }
   function closeSearch() { $('#search').classList.remove('open'); }
@@ -500,10 +784,12 @@
       else if (p[0] === 'train' && !p[1]) V.train();
       else if (p[0] === 'train' && p[1] === 'exam') V.exam(p[2] || 'all');
       else if (p[0] === 'train' && p[1] === 'cards') V.cards(p[2] || 'all');
-      else if (p[0] === 'train' && V[p[1]]) V[p[1]]();
+      else if (p[0] === 'train' && ['chrono', 'pairs', 'heroes', 'blitz'].includes(p[1])) V[p[1]]();
       else if (p[0] === 'tests') V.tests(p[1]);
+      else if (p[0] === 'drill' && p[1]) V.drill(p[1]);
+      else if (p[0] === 'lab' && p[1]) V.lab(p[1]);
       else if (p[0] === PL) V.places();
-      else if (['timeline', 'glossary', 'authors', 'me', 'about'].includes(p[0])) V[p[0]]();
+      else if (['timeline', 'glossary', 'authors', 'me', 'about', 'drills', 'labs', 'daily'].includes(p[0])) V[p[0]]();
       else V.notfound();
     } catch (err) { console.error(err); mount('<div class="narrow"><h1>Ошибка отображения</h1><p>Не удалось открыть страницу. <a href="#/">На главную</a></p></div>'); }
     renderChip(); checkAch();
@@ -531,5 +817,5 @@
     window.addEventListener('hashchange', route);
     route();
   });
-  window.EduEngine = { md, Q, CARDS, EVENTS, state: S };
+  window.EduEngine = { md, inline, tex, Q, CARDS, EVENTS, state: S, R, evalExpr, checkAnswer, genTask };
 })();

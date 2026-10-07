@@ -44,7 +44,10 @@ def main():
     acc = spec.get('accent')
     if acc:
         with open(os.path.join(out, 'styles.css'), 'a', encoding='utf-8') as fh:
-            fh.write(f"\n/* Акцент проекта */\n:root {{ --cinnabar: {acc}; }}\n")
+            fh.write(f"\n/* Акцент проекта */\n:root {{ --cinnabar: {acc}; {'--cinnabar-soft: ' + spec['accent_soft'] + ';' if spec.get('accent_soft') else ''} }}\n")
+            if spec.get('accent_dark'):
+                dk = f"--cinnabar: {spec['accent_dark']}; " + (f"--cinnabar-soft: {spec['accent_dark_soft']};" if spec.get('accent_dark_soft') else '')
+                fh.write(f"@media (prefers-color-scheme: dark) {{ :root:not([data-theme=\"light\"]) {{ {dk} }} }}\n:root[data-theme=\"dark\"] {{ {dk} }}\n")
 
     places_route = spec.get('places', {}).get('route', 'places')
     nav = spec.get('nav') or [['Курсы', '#/', 'home'], ['Тренажёры', '#/train', 'train'], ['Тесты', '#/tests', 'tests'], [spec.get('places', {}).get('nav', 'Карта'), '#/' + places_route, 'places'], ['Хронология', '#/timeline', 'timeline']]

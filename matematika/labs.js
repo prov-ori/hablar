@@ -143,7 +143,7 @@
       P.fn(x => k * x + b, c.acc, 3);
       P.dot(0, b, c.est, 5, '(0; ' + fmt(b, 1) + ')');
       if (k) { P.seg(1, k + b, 2, k + b, c.gold, 2, [5, 4]); P.seg(2, k + b, 2, 2 * k + b, c.gold, 2, [5, 4]); P.text(1.5, k + b, '1', c.gold, 0, k > 0 ? 16 : -6, 'center'); P.text(2, 1.5 * k + b, 'k = ' + fmt(k, 1), c.gold, 6, 4); P.dot(-b / k, 0, c.bad, 5); }
-      ro.innerHTML = '<div class="bigf">' + K.tex('y = ' + (k ? (k === 1 ? '' : k === -1 ? '-' : tn(k, 1)) + 'x' : '') + (b ? (k ? sg(b, 1) : tn(b, 1)) : (k ? '' : '0'))) + '</div>' +
+      ro.innerHTML = '<div class="bigf">' + K.tex('y = ' + K.R.poly([k, b])) + '</div>' +
         (k > 0 ? 'k > 0: функция возрастает — прямая идёт вверх слева направо.' : k < 0 ? 'k < 0: функция убывает — прямая идёт вниз.' : 'k = 0: прямая горизонтальна, функция постоянна.') +
         ' Точка пересечения с осью y: (0; ' + fmt(b, 1) + ').' + (k ? ' С осью x: x = ' + fmt(-b / k) + '.' : '') + ' При шаге вправо на 1 значение y меняется на k (жёлтый треугольник).';
     });
@@ -166,8 +166,8 @@
         P.dot(0, cc, c.est, 5);
         info = 'Ветви ' + (a > 0 ? 'вверх (a > 0)' : 'вниз (a < 0)') + '. Вершина: ' + K.tex('x_0 = -\\frac{b}{2a} = ' + tn(x0)) + ', ' + K.tex('y_0 = ' + tn(y0)) + '. Ось симметрии — пунктир.<br>' +
           K.tex('D = b^2 - 4ac = ' + tn(D)) + (D > 0 ? ' > 0: два корня ' + K.tex('x_{1,2} = ' + tn((-b - Math.sqrt(D)) / (2 * a)) + ';\\ ' + tn((-b + Math.sqrt(D)) / (2 * a))) : D === 0 ? ' = 0: один корень (парабола касается оси x).' : ' < 0: корней нет — парабола не пересекает ось x.') + '<br>Синяя точка (0; ' + fmt(cc) + ') — пересечение с осью y, это всегда c.';
-      } else info = 'При a = 0 это уже не парабола, а прямая ' + K.tex('y = ' + tn(b) + 'x' + sg(cc)) + '.';
-      ro.innerHTML = '<div class="bigf">' + K.tex('y = ' + tn(a) + 'x^2' + sg(b) + 'x' + sg(cc)) + '</div>' + info;
+      } else info = 'При a = 0 это уже не парабола, а прямая ' + K.tex('y = ' + K.R.poly([b, cc])) + '.';
+      ro.innerHTML = '<div class="bigf">' + K.tex('y = ' + K.R.poly([a, b, cc])) + '</div>' + info;
     });
     P = plane(el, { xmin: -8, xmax: 8, ymin: -7, ymax: 7, equal: true });
     const v = controls(el, [['a', '$a$', -3, 3, 0.25, 1], ['b', '$b$', -6, 6, 0.5, -2], ['c', '$c$', -6, 6, 0.5, -3]], K, s.redraw);
@@ -183,7 +183,7 @@
       let txt;
       if (k1 === k2) txt = b1 === b2 ? 'Прямые совпадают — бесконечно много решений.' : 'Прямые параллельны (одинаковый наклон) — решений нет.';
       else { const x = (b2 - b1) / (k1 - k2), y = k1 * x + b1; P.dot(x, y, c.bad, 7, '(' + fmt(x) + '; ' + fmt(y) + ')'); txt = 'Единственное решение: ' + K.tex('x = ' + tn(x) + ',\\ y = ' + tn(y)) + '. Проверка подстановкой: ' + K.tex(tn(k1, 1) + '\\cdot' + '(' + tn(x) + ')' + sg(b1, 1) + ' \\approx ' + tn(y)) + '.'; }
-      ro.innerHTML = '<div class="bigf">' + K.tex('\\begin{cases} y = ' + tn(k1, 1) + 'x' + sg(b1, 1) + ' \\\\ y = ' + tn(k2, 1) + 'x' + sg(b2, 1) + ' \\end{cases}') + '</div>' + txt;
+      ro.innerHTML = '<div class="bigf">' + K.tex('\\begin{cases} y = ' + K.R.poly([k1, b1]) + ' \\\\ y = ' + K.R.poly([k2, b2]) + ' \\end{cases}') + '</div>' + txt;
     });
     P = plane(el, { xmin: -8, xmax: 8, ymin: -6, ymax: 6, equal: true });
     const v = controls(el, [['k1', '$k_1$', -3, 3, 0.5, 1], ['b1', '$b_1$', -5, 5, 0.5, 1], ['k2', '$k_2$', -3, 3, 0.5, -0.5], ['b2', '$b_2$', -5, 5, 0.5, 4]], K, s.redraw);
@@ -291,7 +291,7 @@
       const { A, B, C, Dd } = v; P.size(); P.clear(); P.grid(1); const c = P.c;
       P.fn(Math.sin, alpha(c.muted, .6), 1.5); P.fn(x => A * Math.sin(B * x + C) + Dd, c.acc, 3); P.seg(P.xmin, Dd, P.xmax, Dd, c.gold, 1.5, [6, 4]);
       const T = 2 * Math.PI / Math.abs(B);
-      ro.innerHTML = '<div class="bigf">' + K.tex('y = ' + tn(A, 1) + '\\sin(' + tn(B, 1) + 'x' + sg(C, 2) + ')' + sg(Dd, 1)) + '</div>Амплитуда ' + K.tex('|A| = ' + tn(Math.abs(A), 1)) + ', период ' + K.tex('T = \\frac{2\\pi}{|B|} \\approx ' + tn(T)) + ', средняя линия ' + K.tex('y = ' + tn(Dd, 1)) + ' (пунктир), область значений ' + K.tex('[' + tn(Dd - Math.abs(A), 1) + ';\\ ' + tn(Dd + Math.abs(A), 1) + ']') + '. Сдвиг по x: ' + K.tex('-\\frac{C}{B} \\approx ' + tn(-C / B)) + '.';
+      ro.innerHTML = '<div class="bigf">' + K.tex('y = ' + (A === 1 ? '' : A === -1 ? '-' : tn(A, 1)) + '\\sin(' + (B === 1 ? '' : tn(B, 1)) + 'x' + (C ? sg(C, 2) : '') + ')' + (Dd ? sg(Dd, 1) : '')) + '</div>Амплитуда ' + K.tex('|A| = ' + tn(Math.abs(A), 1)) + ', период ' + K.tex('T = \\frac{2\\pi}{|B|} \\approx ' + tn(T)) + ', средняя линия ' + K.tex('y = ' + tn(Dd, 1)) + ' (пунктир), область значений ' + K.tex('[' + tn(Dd - Math.abs(A), 1) + ';\\ ' + tn(Dd + Math.abs(A), 1) + ']') + '. Сдвиг по x: ' + K.tex('-\\frac{C}{B} \\approx ' + tn(-C / B)) + '.';
     });
     P = plane(el, { xmin: -7, xmax: 7, ymin: -4.5, ymax: 4.5, ratio: 0.55 });
     const v = controls(el, [['A', '$A$', -3, 3, 0.5, 2], ['B', '$B$', 0.5, 4, 0.5, 1], ['C', '$C$', -3.14, 3.14, 0.01, 0], ['Dd', '$D$', -2, 2, 0.5, 0]], K, s.redraw);

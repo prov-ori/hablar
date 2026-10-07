@@ -39,7 +39,14 @@ def main():
     accent = spec.get('accent', '#a92a21'); gold = b.get('gold', '#e7c36a'); paper = b.get('paper', '#fbf7ee'); bg = b.get('og_bg', '#1b2231')
     font = b.get('font', '/usr/share/fonts/truetype/google-fonts/Lora-Variable.ttf')
     font_it = b.get('font_italic', font.replace('-Variable', '-Italic-Variable'))
-    g = glyph_path(font, spec.get('monogram', spec['name'][0]))
+    gfont = b.get('glyph_font', font)
+    if not os.path.isabs(gfont): gfont = os.path.join(HERE, gfont)
+    g = glyph_path(gfont, spec.get('monogram', spec['name'][0]))
+    fdir = font if os.path.isabs(font) else os.path.join(HERE, font)
+    if os.path.isdir(fdir):  # каталог с woff-файлами Lora (fontsource)
+        faces = ''.join(f"@font-face{{font-family:Brand;font-style:{st};font-weight:{w};src:url(file://{fdir}/lora-{sub}-{w}-{st}.woff);unicode-range:{rng}}}" for sub, rng in (('latin', 'U+0000-024F,U+2000-206F'), ('cyrillic', 'U+0400-04FF')) for w in (400, 700) for st in ('normal', 'italic'))
+    else:
+        faces = f"@font-face{{font-family:Brand;src:url(file://{font});font-weight:400 700}}@font-face{{font-family:Brand;font-style:italic;src:url(file://{font_it});font-weight:400 700}}"
     logo = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 <rect width="512" height="512" rx="112" fill="{accent}"/>
 <rect x="40" y="40" width="432" height="432" rx="80" fill="none" stroke="{gold}" stroke-width="10"/>
@@ -54,14 +61,13 @@ def main():
     lines = [fmt(x) for x in spec.get('og_stats', ['{lessons} уроков · {questions} вопросов'])]
     url = spec['base_url'].replace('https://', '').rstrip('/') if spec.get('base_url') else f"{spec['github_user']}.github.io/{spec['slug']}"
     heights = [250, 286, 270, 240, 262, 255, 275]
-    spines = ''.join(f'<div class="sp" style="height:{heights[i % 7]}px;background:{c["color"]}"><i>{html.escape(c.get("roman", str(c["n"])))}</i></div>' for i, c in enumerate(spec['courses'][:7]))
+    spines = ''.join(f'<div class="sp" style="height:{heights[i % 7]}px;background:{c["color"]}"><i>{html.escape(c.get("roman", str(c["n"])))}</i></div>' for i, c in enumerate(spec['courses'][:8]))
     og = f'''<!doctype html><html><head><meta charset="utf-8"><style>
-@font-face{{font-family:Brand;src:url(file://{font});font-weight:400 700}}
-@font-face{{font-family:Brand;font-style:italic;src:url(file://{font_it});font-weight:400 700}}
+{faces}
 html,body{{margin:0}}
 .c{{width:1200px;height:630px;background:{bg};position:relative;overflow:hidden;font-family:Brand,serif;color:#f4efe4}}
-.shelf{{position:absolute;right:58px;bottom:96px;display:flex;align-items:flex-end;gap:10px}}
-.sp{{width:60px;border-radius:5px 5px 2px 2px;box-shadow:inset -6px 0 0 rgba(0,0,0,.18),inset 5px 0 0 rgba(255,255,255,.08);display:flex;justify-content:center;padding-top:12px;color:#fff;font-weight:700;font-size:19px}}
+.shelf{{position:absolute;right:58px;bottom:96px;display:flex;align-items:flex-end;gap:8px}}
+.sp{{width:54px;border-radius:5px 5px 2px 2px;box-shadow:inset -6px 0 0 rgba(0,0,0,.18),inset 5px 0 0 rgba(255,255,255,.08);display:flex;justify-content:center;padding-top:12px;color:#fff;font-weight:700;font-size:19px}}
 .sp i{{font-style:normal;border-top:2px solid rgba(255,255,255,.55);border-bottom:2px solid rgba(255,255,255,.55);padding:5px 2px;height:max-content}}
 .plank{{position:absolute;right:40px;bottom:82px;height:14px;background:#3a4357;border-radius:3px}}
 .logo{{position:absolute;left:72px;top:60px;width:132px;height:132px}}
@@ -74,7 +80,7 @@ p{{position:absolute;left:76px;top:340px;margin:0;font-size:36px;line-height:1.3
 <img class="logo" src="favicon.svg"><div class="url">{html.escape(url)}</div>
 <h1>{html.escape(spec['name'])}</h1><p>{html.escape(spec.get('og_subtitle', spec.get('tagline', '')))}</p>
 <div class="meta"><b>{html.escape(lines[0])}</b>{''.join('<br>' + html.escape(x) for x in lines[1:])}</div>
-<div class="shelf">{spines}</div><div class="plank" style="width:{min(7, len(spec['courses'])) * 70 + 20}px"></div>
+<div class="shelf">{spines}</div><div class="plank" style="width:{min(8, len(spec['courses'])) * 62 + 20}px"></div>
 </div></body></html>'''
     og_path = os.path.join(site, '_og.html'); open(og_path, 'w', encoding='utf-8').write(og)
     icon_path = os.path.join(site, '_icon.html'); open(icon_path, 'w').write('<!doctype html><body style="margin:0"><img src="favicon.svg" style="width:100vw;height:100vh;display:block">')

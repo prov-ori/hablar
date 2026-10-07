@@ -317,8 +317,13 @@ footer { max-width: 1040px; margin: 0 auto; padding: 24px 16px 40px; color: var(
 .lessons a > span { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 560px) { .lessons .badge-src { white-space: normal; max-width: 92px; text-align: center; line-height: 1.2; } }
 
-/* Акцент проекта */
-:root { --cinnabar: #3550b8; }
+.search-btn kbd { white-space: nowrap; }
+@media (max-width: 1100px) { .search-btn kbd { display: none; } }
+.spine .gr { white-space: nowrap; font-size: 10px; overflow: hidden; max-width: 100%; text-align: center; }
+@media (max-width: 560px) { .spine .gr { font-size: 8px; } }
+.tq .q-text { font-weight: 400; }
+.tq .q-text p, .tq .model p { margin: .3em 0; }
+
 
 /* ——— Математика: формулы, задачник, лаборатории ——— */
 .katex { font-size: 1.08em; }
@@ -382,3 +387,8 @@ code.tex { font: 15px ui-monospace, Menlo, Consolas, monospace; background: var(
 .home-top .spine, .home-top .spine:nth-child(n) { flex: 1 1 0; width: auto; min-width: 0; }
 .spine:nth-child(6) { --h: 282px; } .spine:nth-child(7) { --h: 258px; } .spine:nth-child(8) { --h: 272px; }
 @media (max-width: 560px) { .spine:nth-child(6) { --h: 252px; } .spine:nth-child(7) { --h: 230px; } .spine:nth-child(8) { --h: 244px; } .spine .t { font-size: 13px; } .shelf { gap: 4px; } }
+
+/* Акцент проекта */
+:root { --cinnabar: #3550b8; --cinnabar-soft: #e7ebf9; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cinnabar: #8fa3ff; --cinnabar-soft: #1f2643; } }
+:root[data-theme="dark"] { --cinnabar: #8fa3ff; --cinnabar-soft: #1f2643; }

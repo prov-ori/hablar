@@ -24,7 +24,7 @@ function checkTex(s, where) {
     texCount++;
     if (/[\x00-\x08\x0b\x0c\x0e-\x1f\t\n\r]/.test(t)) err.push('управляющий символ в формуле (забыт двойной \\\\?) ' + where + ': ' + JSON.stringify(t));
     const m = t.replace(/\\(text|mathrm|operatorname)\{[^}]*\}/g, '').match(CMDS); if (m) err.push('команда без \\ в формуле ' + where + ': «' + m[2] + '» в ' + JSON.stringify(t));
-    try { katex.renderToString(t, { throwOnError: true }); } catch (e) { err.push('KaTeX ' + where + ': ' + e.message.slice(0, 120)); }
+    try { katex.renderToString(t, { throwOnError: true, strict: c => c === 'unicodeTextInMathMode' ? 'error' : 'ignore' }); } catch (e) { err.push('KaTeX ' + where + ': ' + e.message.slice(0, 120)); }
   });
 }
 const deep = (o, where) => { if (typeof o === 'string') checkTex(o, where); else if (Array.isArray(o)) o.forEach((x, i) => deep(x, where)); else if (o && typeof o === 'object') for (const k in o) if (typeof o[k] !== 'function') deep(o[k], where + '.' + k); };

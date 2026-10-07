@@ -435,5 +435,88 @@
     if (lv === 2) { if (R.int(0, 1)) { const hh = 3 * R.int(1, 5); return { q: 'Конус: $r = ' + r + '$, $h = ' + hh + '$. Найдите объём.', a: Math.PI * r * r * hh / 3, tol: 0.006 * Math.PI * r * r * hh / 3, show: '$' + r * r * hh / 3 + '\\pi$', sol: '$V = \\frac{1}{3}\\pi r^2 h$' }; } const a = R.int(2, 10), hh = 3 * R.int(1, 6); return { q: 'Пирамида с квадратным основанием ' + a + ' × ' + a + ' и высотой ' + hh + '. Объём?', a: a * a * hh / 3, kb: 'numeric', sol: '$\\frac{1}{3} \\cdot ' + a * a + ' \\cdot ' + hh + '$' }; }
     const rr = 3 * R.int(1, 4); return R.int(0, 1) ? { q: 'Шар радиуса ' + rr + '. Найдите объём.', a: 4 / 3 * Math.PI * rr ** 3, tol: 0.006 * 4 / 3 * Math.PI * rr ** 3, show: '$' + 4 * rr ** 3 / 3 + '\\pi$', sol: '$V = \\frac{4}{3}\\pi r^3$' } : { q: 'Шар радиуса ' + rr + '. Найдите площадь поверхности.', a: 4 * Math.PI * rr * rr, tol: 0.006 * 4 * Math.PI * rr * rr, show: '$' + 4 * rr * rr + '\\pi$', sol: '$S = 4\\pi r^2$' };
   }, 'объём цилиндр конус шар');
+  /* ——— Курс V ——— */
+  D(5, 'rootn', 'd-ratpow', 'ⁿ√', 'Корни и дробные степени', 'Вычислите корень n-й степени или степень с дробным показателем.', ['Корни', 'Дробный показатель', 'Отрицательный показатель'], (lv, R) => {
+    const base = R.pick([2, 3, 4, 5]), n = R.pick(base === 2 ? [2, 3, 4, 5] : base === 3 ? [2, 3, 4] : [2, 3]), m = R.int(1, 3);
+    if (lv === 1) { const neg = n % 2 && R.int(0, 1); return { q: '$\\sqrt[' + n + ']{' + (neg ? -1 : 1) * base ** n + '}$', a: (neg ? -1 : 1) * base, sol: '$' + R.signed((neg ? -1 : 1) * base) + '^{' + n + '} = ' + (neg ? -1 : 1) * base ** n + '$' }; }
+    if (lv === 2) return { q: '$' + base ** n + '^{\\frac{' + m + '}{' + n + '}}$', a: base ** m, sol: '$(\\sqrt[' + n + ']{' + base ** n + '})^{' + m + '} = ' + base + '^{' + m + '}$' };
+    return { q: '$' + base ** n + '^{-\\frac{' + m + '}{' + n + '}}$ (ответ дробью)', a: 1 / base ** m, show: '$\\frac{1}{' + base ** m + '}$', sol: '$\\frac{1}{' + base + '^{' + m + '}}$' };
+  }, 'корень степень');
+
+  D(5, 'intervals', 'd-quadineq', '⇔', 'Квадратные и дробные неравенства', 'Сколько целых решений? Или выберите промежуток.', ['Выбор промежутка', 'Число целых решений', 'Метод интервалов'], (lv, R) => {
+    const p = R.int(-6, 3), q = p + R.int(1, 7); const P = R.poly([1, -(p + q), p * q]);
+    if (lv === 1) { const less = R.int(0, 1), st = R.int(0, 1); const L = st ? '(' : '[', Rr = st ? ')' : ']'; const op = less ? (st ? '<' : '\\le') : (st ? '>' : '\\ge'); const inside = '$' + L + p + ';\\ ' + q + Rr + '$', outside = '$(-\\infty;\\ ' + p + Rr + ' \\cup ' + L + q + ';\\ \\infty)$'; return { q: 'Решите: $' + P + ' ' + op + ' 0$', opts: less ? [inside, outside, '$(' + (-q) + ';\\ ' + (-p) + ')$', '$[' + p + ';\\ \\infty)$', '$(' + (p - 1) + ';\\ ' + (q + 1) + ')$'].filter((v, i, s2) => s2.indexOf(v) === i).slice(0, 4) : [outside, inside, '$(-\\infty;\\ ' + (-q) + ') \\cup (' + (-p) + ';\\ \\infty)$', '$(' + q + ';\\ \\infty)$', '$[' + (p - 1) + ';\\ ' + (q + 1) + ']$'].filter((v, i, s2) => s2.indexOf(v) === i).slice(0, 4), sol: 'Корни ' + p + ' и ' + q + ', ветви вверх: ' + (less ? 'между корнями.' : 'вне корней.') }; }
+    if (lv === 2) return { q: 'Сколько целых решений у неравенства $' + P + ' \\le 0$?', a: q - p + 1, kb: 'numeric', sol: 'Решение $[' + p + ';\\ ' + q + ']$: целые от ' + p + ' до ' + q + '.' };
+    const a = R.int(-5, 2), b = a + R.int(2, 7); return { q: 'Сколько целых решений у неравенства $\\frac{x' + R.term(-a, '') + '}{x' + R.term(-b, '') + '} \\le 0$?', a: b - a, kb: 'numeric', sol: 'Решение $[' + a + ';\\ ' + b + ')$ — знаменатель не может быть нулём.' };
+  }, 'неравенство метод интервалов');
+
+  D(5, 'abs', 'd-abs', '| |', 'Уравнения с модулем', 'Корни через «;». Нет решений — «нет».', ['$|x - a| = b$', '$|kx + m| = b$', 'Неравенства'], (lv, R) => {
+    const a = R.int(-9, 9), b = R.int(0, 9);
+    if (lv === 1) { if (R.int(0, 6) === 0) return { q: 'Решите: $|x' + R.term(-a, '') + '| = ' + (-b - 1) + '$', a: [], sol: 'Модуль не бывает отрицательным.' }; return { q: 'Решите: $|x' + R.term(-a, '') + '| = ' + b + '$', a: b ? [a - b, a + b] : [a], sol: 'Точки на расстоянии ' + b + ' от ' + a + '.' }; }
+    if (lv === 2) { const k = R.int(2, 4), x1 = R.int(-6, 6), x2 = x1 + R.int(1, 4); const m = -(k * (x1 + x2)) / 2; if (!Number.isInteger(m) && !Number.isInteger(2 * m)) return null; const bb = k * (x2 - x1) / 2; return { q: 'Решите: $|' + k + 'x' + R.term(m, '') + '| = ' + R.tn(bb) + '$', a: [x1, x2], sol: '$' + k + 'x' + R.term(m, '') + ' = \\pm ' + R.tn(bb) + '$' }; }
+    const lt = R.int(0, 1); const bb = R.int(1, 7);
+    return lt ? { q: 'Сколько целых решений у $|x' + R.term(-a, '') + '| \\le ' + bb + '$?', a: 2 * bb + 1, kb: 'numeric', sol: '$' + (a - bb) + ' \\le x \\le ' + (a + bb) + '$' } : { q: 'Найдите наибольшее целое отрицательное решение $|x' + R.term(-a, '') + '| > ' + bb + '$.', a: Math.min(-1, a - bb - 1), sol: '$x < ' + (a - bb) + '$ или $x > ' + (a + bb) + '$' };
+  }, 'модуль');
+
+  D(5, 'irrational', 'd-irr', '√=', 'Иррациональные уравнения', 'Не забудьте проверку — посторонние корни отбрасываются.', ['$\\sqrt{ax + b} = c$', '$\\sqrt{f} = x + m$', 'Два корня'], (lv, R) => {
+    if (lv === 1) { const x = R.int(-5, 15), a = R.int(1, 4); const c = R.int(1, 7); const b = c * c - a * x; return { q: 'Решите: $\\sqrt{' + R.poly([a, b]) + '} = ' + c + '$', a: [x], sol: '$' + R.poly([a, b]) + ' = ' + c * c + '$' }; }
+    if (lv === 2) { const r = R.int(0, 8), m = R.int(-4, 3); if (r + m < 0) return null; const s = R.int(-9, 9); // x + m = sqrt(f), f = (x+m)^2 with extra root s: f(x) = (x+m)^2 + ... use quadratic with roots r and s
+      // уравнение: sqrt(px + t) = x + m, где (x + m)^2 = px + t имеет корни r и s
+      const p = (r + m) ** 2 - (s + m) ** 2; if (r === s || p % (r - s)) return null; const pp = p / (r - s), t = (r + m) ** 2 - pp * r; if ((s + m) ** 2 !== pp * s + t) return null;
+      const good = [r, ...(s + m >= 0 ? [s] : [])];
+      return { q: 'Решите: $\\sqrt{' + R.poly([pp, t]) + '} = x' + R.term(m, '') + '$', a: good, sol: 'Возводим в квадрат: $' + R.poly([1, 2 * m - pp, m * m - t]) + ' = 0$, корни ' + r + ' и ' + s + '. ' + (s + m < 0 ? 'Корень ' + s + ' посторонний (правая часть отрицательна).' : 'Оба подходят.') };
+    }
+    const x = R.int(1, 12), a = R.int(2, 4), b = R.int(-5, 5), c = a * x + b - x; if (a * x + b < 0) return null;
+    return { q: 'Решите: $\\sqrt{' + R.poly([a, b]) + '} = \\sqrt{x' + R.term(c, '') + '}$', a: [x], sol: '$' + R.poly([a, b]) + ' = x' + R.term(c, '') + '$, проверяем, что подкоренные выражения $\\ge 0$.' };
+  }, 'иррациональное уравнение');
+
+  D(5, 'functions', 'd-func', 'ƒ', 'Свойства функций', 'Значение, сложная и обратная функция, область определения.', ['Значение функции', 'Сложная функция', 'Обратная функция'], (lv, R) => {
+    const a = R.nz(-4, 4), b = R.int(-6, 6), c = R.nz(-3, 3), d = R.int(-5, 5), x = R.int(-4, 4);
+    if (lv === 1) { if (R.int(0, 1)) return { q: '$f(x) = ' + R.poly([1, a, b]) + '$. Найдите $f(' + x + ')$.', a: x * x + a * x + b }; const k = R.int(1, 9); return { q: 'Найдите наименьшее целое $x$ из области определения $f(x) = \\sqrt{' + R.poly([1, -k]) + '}$.', a: k, sol: '$x - ' + k + ' \\ge 0$' }; }
+    if (lv === 2) return { q: '$f(x) = ' + R.poly([a, b]) + '$, $g(x) = ' + R.poly([c, 0, d]) + '$. Найдите $f(g(' + x + '))$.', a: a * (c * x * x + d) + b, sol: '$g(' + x + ') = ' + (c * x * x + d) + '$' };
+    const y = R.int(-10, 10); const k = R.nz(-5, 5), m = R.int(-9, 9); return { q: '$f(x) = ' + R.poly([k, m]) + '$. Найдите $f^{-1}(' + (k * y + m) + ')$.', a: y, sol: 'Решаем $' + R.poly([k, m]) + ' = ' + (k * y + m) + '$.' };
+  }, 'функция область определения обратная');
+
+  D(5, 'exponential', 'd-expeq', 'aˣ', 'Показательные уравнения', 'Приведите к одному основанию.', ['$a^x = b$', 'Разные основания', 'Замена переменной'], (lv, R) => {
+    const base = R.pick([2, 3, 5]), x = R.int(-3, 6);
+    if (lv === 1) { const sh = R.int(-3, 3); const e = x + sh; if (e < -3 || e > 7) return null; const v = base ** e; return { q: 'Решите: $' + base + '^{x' + R.term(sh, '') + '} = ' + (e >= 0 ? v : '\\frac{1}{' + base ** -e + '}') + '$', a: x, sol: '$' + base + '^{x' + R.term(sh, '') + '} = ' + base + '^{' + e + '}$' }; }
+    if (lv === 2) { const [p, k1, k2] = R.pick([[2, 2, 3], [2, 3, 2], [3, 2, 3], [2, 4, 3], [3, 3, 2]]); const A = p ** k1, B = p ** k2; const xx = R.int(-3, 3) * k2; const rhs = k1 * xx / k2; if (!Number.isInteger(rhs)) return null; return { q: 'Решите: $' + A + '^{x} = ' + B + '^{' + rhs + '}$', a: xx, sol: '$' + p + '^{' + k1 + 'x} = ' + p + '^{' + k2 * rhs + '}$' }; }
+    const t1 = R.int(0, 3), t2 = R.int(0, 3); const s = 2 ** t1 + 2 ** t2, pr = 2 ** (t1 + t2);
+    return { q: 'Решите: $4^x - ' + s + ' \\cdot 2^x + ' + pr + ' = 0$', a: t1 === t2 ? [t1] : [t1, t2], sol: '$t = 2^x$: $t^2 - ' + s + 't + ' + pr + ' = 0$, $t = ' + 2 ** t1 + '$ или $' + 2 ** t2 + '$.' };
+  }, 'показательное уравнение');
+
+  D(5, 'logarithm', 'd-log', 'log', 'Вычисление логарифмов', 'Определение и свойства логарифма.', ['По определению', 'Свойства', 'Новое основание'], (lv, R) => {
+    const b = R.pick([2, 3, 5, 10]), k = R.int(-3, b === 10 ? 4 : 5);
+    const val = b ** k, vs = k >= 0 ? String(val) : '\\frac{1}{' + b ** -k + '}';
+    if (lv === 1) return { q: '$' + (b === 10 ? '\\lg ' : '\\log_{' + b + '} ') + vs + '$', a: k, sol: '$' + b + '^{' + k + '} = ' + vs + '$' };
+    if (lv === 2) { const t = R.int(0, 2); if (t === 0) { const [x, y] = R.pick([[2, 5], [4, 25], [20, 5], [2, 50], [8, 125]]); return { q: '$\\lg ' + x + ' + \\lg ' + y + '$', a: Math.log10(x * y), sol: '$\\lg ' + x * y + '$' }; } if (t === 1) { const m = R.int(2, 9); return { q: '$\\log_{' + b + '} ' + b ** 2 * m + ' - \\log_{' + b + '} ' + m + '$', a: 2, sol: '$\\log_{' + b + '} ' + b * b + '$' }; } return { q: '$' + b + '^{\\log_{' + b + '} ' + (k + 9) + '}$', a: k + 9, sol: 'Основное логарифмическое тождество.' }; }
+    const [p, m, n] = R.pick([[2, 3, 2], [2, 2, 3], [3, 3, 2], [2, 4, 2], [2, 5, 2], [3, 1, 2]]); return { q: '$\\log_{' + p ** n + '} ' + p ** m + '$', a: m / n, show: '$' + R.frac(m, n) + '$', sol: '$\\frac{\\log_' + p + ' ' + p ** m + '}{\\log_' + p + ' ' + p ** n + '} = \\frac{' + m + '}{' + n + '}$' };
+  }, 'логарифм');
+
+  D(5, 'logeq', 'd-logeq', 'log=', 'Логарифмические уравнения', 'Помните про ОДЗ: аргумент логарифма > 0.', ['$\\log_a f = c$', 'Сумма логарифмов', 'Неравенства'], (lv, R) => {
+    const b = R.pick([2, 3, 5]), c = R.int(0, b === 2 ? 5 : 3);
+    if (lv === 1) { const k = R.int(1, 3), m = R.int(-6, 6); const v = b ** c - m; if (v % k) return null; return { q: 'Решите: $\\log_{' + b + '}(' + R.poly([k, m]) + ') = ' + c + '$', a: v / k, sol: '$' + R.poly([k, m]) + ' = ' + b + '^{' + c + '} = ' + b ** c + '$' }; }
+    if (lv === 2) { const [bb, x, sh, rhs] = R.pick([[2, 1, 1, 1], [2, 2, 2, 3], [2, 1, 3, 2], [2, 2, 6, 4], [2, 4, 4, 5], [2, 4, 12, 6], [3, 1, 2, 1], [3, 1, 8, 2], [3, 3, 6, 3], [5, 1, 4, 1], [5, 1, 24, 2], [5, 5, 20, 3], [2, 8, 8, 7], [3, 3, 24, 4]]);
+      return { q: 'Решите: $\\log_{' + bb + '} x + \\log_{' + bb + '}(x + ' + sh + ') = ' + rhs + '$', a: [x], sol: 'ОДЗ: $x > 0$. $x(x + ' + sh + ') = ' + bb ** rhs + '$, корни ' + x + ' и ' + (-sh - x) + '; отрицательный не входит в ОДЗ.' }; }
+    const k = R.int(1, 4); return { q: 'Сколько целых решений у неравенства $\\log_{' + b + '} x \\le ' + k + '$?', a: b ** k, kb: 'numeric', sol: '$0 < x \\le ' + b ** k + '$' };
+  }, 'логарифмическое уравнение');
+
+  D(5, 'arithseq', 'd-arith', '➕…', 'Арифметическая прогрессия', 'n-й член, разность, сумма.', ['n-й член', 'Разность и номер', 'Сумма'], (lv, R) => {
+    const a1 = R.int(-10, 15), d = R.nz(-6, 7), n = R.int(5, 30);
+    const seq = [0, 1, 2].map(i => a1 + i * d).join(';\\ ');
+    if (lv === 1) return { q: 'Найдите $a_{' + n + '}$ прогрессии $' + seq + ';\\ \\ldots$', a: a1 + (n - 1) * d, sol: '$a_{' + n + '} = ' + a1 + ' + ' + (n - 1) + ' \\cdot ' + R.signed(d) + '$' };
+    if (lv === 2) { const m = n + R.int(2, 8); if (R.int(0, 1)) return { q: '$a_{' + n + '} = ' + (a1 + (n - 1) * d) + '$, $a_{' + m + '} = ' + (a1 + (m - 1) * d) + '$. Найдите разность $d$.', a: d, sol: '$' + (m - n) + 'd = ' + (m - n) * d + '$' }; return { q: 'Какой номер у члена ' + (a1 + (n - 1) * d) + ' в прогрессии $' + seq + ';\\ \\ldots$?', a: n, kb: 'numeric', sol: '$' + a1 + ' + (n - 1) \\cdot ' + R.signed(d) + ' = ' + (a1 + (n - 1) * d) + '$' }; }
+    if (R.int(0, 2) === 0) { const N = R.pick([10, 20, 50, 100, 30, 40]); return { q: 'Найдите сумму $1 + 2 + 3 + \\ldots + ' + N + '$.', a: N * (N + 1) / 2, kb: 'numeric', sol: '$\\frac{' + N + ' \\cdot ' + (N + 1) + '}{2}$' }; }
+    const an = a1 + (n - 1) * d; return { q: 'Найдите сумму первых ' + n + ' членов прогрессии $' + seq + ';\\ \\ldots$', a: (a1 + an) * n / 2, sol: '$a_{' + n + '} = ' + an + '$, $S = \\frac{(' + a1 + ' + ' + R.signed(an) + ') \\cdot ' + n + '}{2}$' };
+  }, 'арифметическая прогрессия');
+
+  D(5, 'geomseq', 'd-geom', '✖…', 'Геометрическая прогрессия', 'n-й член, сумма, бесконечная сумма.', ['n-й член', 'Сумма', 'Бесконечная сумма'], (lv, R) => {
+    const b1 = R.nz(-5, 6), q = R.pick([2, 3, -2, -3, 2]), n = R.int(3, 7);
+    const seq = [0, 1, 2].map(i => b1 * q ** i).join(';\\ ');
+    if (lv === 1) return { q: 'Найдите $b_{' + n + '}$ прогрессии $' + seq + ';\\ \\ldots$', a: b1 * q ** (n - 1), sol: '$b_{' + n + '} = ' + b1 + ' \\cdot ' + R.signed(q) + '^{' + (n - 1) + '}$' };
+    if (lv === 2) return { q: 'Найдите сумму первых ' + n + ' членов прогрессии $' + seq + ';\\ \\ldots$', a: b1 * (q ** n - 1) / (q - 1), sol: '$S = \\frac{' + b1 + '(' + R.signed(q) + '^{' + n + '} - 1)}{' + q + ' - 1}$' };
+    const [qn, qd] = R.pick([[1, 2], [1, 3], [2, 3], [1, 4], [3, 4], [-1, 2], [-1, 3]]); const B = R.int(1, 9) * qd;
+    return { q: 'Найдите сумму бесконечно убывающей прогрессии: $b_1 = ' + B + '$, $q = ' + R.frac(qn, qd) + '$.', a: B / (1 - qn / qd), show: '$' + R.frac(B * qd, qd - qn) + '$', sol: '$S = \\frac{' + B + '}{1 - (' + R.frac(qn, qd) + ')}$' };
+  }, 'геометрическая прогрессия');
 })();
 

@@ -384,6 +384,8 @@
 
   // Разбор ответа: числа (запятая или точка), дроби, √, π, ^, скобки, неявное умножение.
   function evalExpr(src) {
+    const mx = String(src).trim().replace(/[−–—]/g, '-').match(/^(-?)(\d+)\s+(\d+)\s*\/\s*(\d+)$/); // смешанное число «2 1/3»
+    if (mx) return (mx[1] ? -1 : 1) * (+mx[2] + mx[3] / mx[4]);
     const s = String(src).toLowerCase().replace(/\s+/g, '').replace(/[−–—]/g, '-').replace(/[×·*]/g, '*').replace(/[:÷]/g, '/').replace(/,/g, '.').replace(/pi|пи/g, 'π').replace(/sqrt|корень/g, '√');
     let i = 0;
     const peek = () => s[i];

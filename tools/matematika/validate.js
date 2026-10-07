@@ -84,7 +84,7 @@ const lids = new Set(); for (const l of P.labs) { if (lids.has(l.id)) err.push('
 
 // ——— проверка парсера ответов ———
 const T = (a, raw, extra = {}) => E.checkAnswer(Object.assign({ a }, extra), raw);
-[[0.75, '3/4'], [0.75, '0,75'], [-2, '−2'], [2 * Math.sqrt(3), '2√3'], [Math.PI / 2, 'π/2'], [8, '2^3'], [[2, -3], '-3; 2'], [[1, 2], '(1; 2)', { ordered: true }], [0.5, '1:2'], [Math.sqrt(2) / 2, '√2/2'], [6, '2(1+2)']].forEach(([a, r, x]) => { if (!T(a, r, x)) err.push('парсер не принял ' + r); });
+[[0.75, '3/4'], [0.75, '0,75'], [-2, '−2'], [2 * Math.sqrt(3), '2√3'], [Math.PI / 2, 'π/2'], [8, '2^3'], [[2, -3], '-3; 2'], [[1, 2], '(1; 2)', { ordered: true }], [0.5, '1:2'], [Math.sqrt(2) / 2, '√2/2'], [6, '2(1+2)'], [7/3, '2 1/3'], [-7/3, '−2 1/3']].forEach(([a, r, x]) => { if (!T(a, r, x)) err.push('парсер не принял ' + r); });
 [[0.75, '3/5'], [[1, 2], '(2; 1)', { ordered: true }]].forEach(([a, r, x]) => { if (T(a, r, x)) err.push('парсер принял неверное ' + r); });
 
 const stat = { lessons: P.lessons.length, questions: q, cards: c + P.glossary.length, events: e, terms: P.glossary.length, works: P.works.length, heroes: P.heroes.length, authors: P.authors.length, places: P.places.length, testItems: ti, drills: P.drills.length, labs: P.labs.length, formulas: texCount, generated: gens, perCourse: P.config.courses.map(c => P.lessons.filter(l => l.course === c.n).length) };

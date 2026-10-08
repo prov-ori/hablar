@@ -38,7 +38,7 @@
   /* ——— Хранилище ——— */
   const KEY = C.storageKey;
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
-  const S = Object.assign({ xp: 0, done: {}, quiz: {}, cards: {}, ach: {}, tests: {}, best: {}, days: [], visits: {}, last: null, theme: null, drills: {}, daily: {}, lv: {} }, load());
+  const S = Object.assign({ xp: 0, done: {}, quiz: {}, cards: {}, ach: {}, tests: {}, best: {}, days: [], visits: {}, last: null, theme: null, drills: {}, daily: {}, lv: {}, calc: { hist: [], deg: true } }, load());
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* приватный режим */ } };
 
   /* ——— Подготовка данных ——— */
@@ -183,7 +183,7 @@
     const last = S.last && byId[S.last];
     const nextL = last ? (P.lessons[last.idx + 1] && !S.done[last.id] ? last : P.lessons[last.idx + 1] || last) : P.lessons[0];
     const dailyDone = S.daily[today()] != null;
-    mount(`<div class="home-top">
+    mount(`<div class="home"><div class="home-top">
       <section class="hero">
         <h1>${esc(C.hero.title)}</h1>
         <p class="lead">${esc(C.hero.lead)}</p>
@@ -197,29 +197,31 @@
         }).join('')}</nav>
         <div class="plank"></div>
       </div></div>
-      <div class="shelf-legend">${courses.map(c => `<a href="#/c/${c.n}" style="--c:${c.color}"><b>${c.roman}</b><div>${esc(c.title)}<span>${esc(c.grade)} · ${doneIn(c.n)}/${lessonsOf(c.n).length}</span></div></a>`).join('')}</div>
       <div class="home-actions">
       ${nextL ? `<a class="continue" href="#/l/${nextL.id}" ${cs(nextL.course)}><div><small>${S.last ? 'Продолжить' : 'Начать с первого урока'}</small><b>${esc(nextL.title)}</b></div><span style="margin-left:auto">›</span></a>` : ''}
       ${P.drills.length ? `<a class="continue daily" href="#/daily"><div><small>${dailyDone ? 'Разминка дня пройдена · ' + S.daily[today()] + ' из 5' : 'Разминка дня · 5 задач · +20 опыта'}</small><b>${dailyDone ? 'Решить ещё раз' : 'Пять задач на сегодня'}</b></div><span style="margin-left:auto">☀</span></a>` : ''}
       </div>
+      <h2 class="m-only">Курсы</h2>
+      <nav class="ccards" aria-label="Курсы">${courses.map(c => { const n = lessonsOf(c.n).length, d = doneIn(c.n); return `<a class="ccard" href="#/c/${c.n}" style="--c:${c.color}"><b>${c.roman}</b><span>${esc(c.title)}<small>${esc(c.grade)} · ${d}/${n}</small></span><i style="width:${n ? Math.round(100 * d / n) : 0}%"></i></a>`; }).join('')}</nav>
+      <div class="shelf-legend">${courses.map(c => `<a href="#/c/${c.n}" style="--c:${c.color}"><b>${c.roman}</b><div>${esc(c.title)}<span>${esc(c.grade)} · ${doneIn(c.n)}/${lessonsOf(c.n).length}</span></div></a>`).join('')}</div>
       <div class="stats">
         <div class="stat"><b>${done}/${total}</b><span>уроков пройдено</span></div>
         ${P.drills.length ? `<div class="stat"><b>${solved()}</b><span>задач решено</span></div>` : ''}
-        <div class="stat"><b>${correctCount()}</b><span>верных ответов из ${Q.length}</span></div>
+        <div class="stat opt"><b>${correctCount()}</b><span>верных ответов из ${Q.length}</span></div>
         <div class="stat"><b>${streak()}</b><span>${plural(streak(), ['день', 'дня', 'дней'])} подряд</span></div>
-        <div class="stat"><b>${dueCards().length}</b><span>карточек к повторению</span></div>
+        <div class="stat opt"><b>${dueCards().length}</b><span>карточек к повторению</span></div>
       </div>
-      ${P.labs.length ? `<h2>${esc(L.labs.title)}</h2><p class="muted">${esc(L.labs.desc)}</p><div class="grid">${P.labs.slice(0, 6).map(labTile).join('')}</div>${P.labs.length > 6 ? `<p><a href="#/labs">Все ${P.labs.length} ${plural(P.labs.length, ['лаборатория', 'лаборатории', 'лабораторий'])} ›</a></p>` : ''}` : ''}
+      ${P.labs.length ? `<h2>${esc(L.labs.title)}</h2><p class="muted d-only">${esc(L.labs.desc)}</p><div class="grid rail">${P.labs.slice(0, 8).map(labTile).join('')}</div><p><a href="#/labs">Все ${P.labs.length} ${plural(P.labs.length, ['лаборатория', 'лаборатории', 'лабораторий'])} ›</a></p>` : ''}
       ${P.drills.length ? `<h2>${esc(L.drills.title)}</h2><p class="muted">${P.drills.length} генераторов задач. ${esc(L.drills.desc)}</p><div class="chips">${courses.map(c => `<a class="chip" href="#/drills?c=${c.n}" ${cs(c.n)}>${c.roman}. ${esc(c.title)} · ${P.drills.filter(d => d.course === c.n).length}</a>`).join('')}</div>` : ''}
       <h2>Тренажёры</h2>
-      <div class="grid">${trainTiles().slice(0, 6).join('')}</div>
+      <div class="grid rail">${trainTiles().slice(0, 6).join('')}</div>
       <h2>Справочники</h2>
       <div class="grid">
         ${P.places.length ? `<a class="tile" href="#/${PL}"><span class="ico">◆</span><b>${esc(C.places.title)}</b><p>${esc(C.places.teaser)} ${P.places.length} мест на карте.</p></a>` : ''}
         ${EVENTS.length ? `<a class="tile" href="#/timeline"><span class="ico">⏳</span><b>${esc(L.timeline.title)}</b><p>${esc(fill(L.timeline.desc, EVENTS.length))}</p></a>` : ''}
         ${P.authors.length ? `<a class="tile" href="#/authors"><span class="ico">✒</span><b>${esc(C.people.title)}</b><p>${P.authors.length} ${esc(C.people.teaser)}</p></a>` : ''}
         ${P.glossary.length ? `<a class="tile" href="#/glossary"><span class="ico">Аа</span><b>Словарь терминов</b><p>${P.glossary.length} понятий с определениями.</p></a>` : ''}
-      </div>`);
+      </div></div>`);
   };
 
   function trainTiles() {
@@ -386,7 +388,7 @@
   function evalExpr(src) {
     const mx = String(src).trim().replace(/[−–—]/g, '-').match(/^(-?)(\d+)\s+(\d+)\s*\/\s*(\d+)$/); // смешанное число «2 1/3»
     if (mx) return (mx[1] ? -1 : 1) * (+mx[2] + mx[3] / mx[4]);
-    const s = String(src).toLowerCase().replace(/\s+/g, '').replace(/[−–—]/g, '-').replace(/[×·*]/g, '*').replace(/[:÷]/g, '/').replace(/,/g, '.').replace(/pi|пи/g, 'π').replace(/sqrt|корень/g, '√');
+    let s = String(src).toLowerCase().replace(/\s+/g, '').replace(/[−–—]/g, '-').replace(/[×·*]/g, '*').replace(/[:÷]/g, '/').replace(/,/g, '.').replace(/pi|пи/g, 'π').replace(/sqrt|корень/g, '√');
     let i = 0;
     const peek = () => s[i];
     function expr() { let v = term(); while (peek() === '+' || peek() === '-') { const o = s[i++]; const r = term(); v = o === '+' ? v + r : v - r; } return v; }
@@ -431,13 +433,16 @@
     return { opts, html: `<p class="q-text">${inline(t.q)}</p>${t.svg ? '<div class="task-fig">' + t.svg + '</div>' : ''}
       ${opts ? `<div class="opts">${opts.map(x => `<button class="opt" data-k="${x.k}">${inline(x.o)}</button>`).join('')}</div>` :
         `<form class="ans-form" autocomplete="off"><div class="ans-row"><input class="ans-in" type="text" inputmode="${t.kb || 'text'}" aria-label="Ответ" placeholder="${esc(t.ph || L.drills.ph)}" enterkeyhint="done" autocapitalize="off" spellcheck="false">${t.unit ? '<span class="unit">' + inline(t.unit) + '</span>' : ''}<button class="btn primary" type="submit">Проверить</button></div>
-        <div class="keys">${['−', '/', ',', ';', '√', 'π', '^', '(', ')'].map(k => `<button type="button" data-key="${k === '−' ? '-' : k}">${k}</button>`).join('')}</div></form>`}
+        <div class="keys">${['−', '/', ',', ';', '√', 'π', '^', '(', ')'].map(k => `<button type="button" data-key="${k === '−' ? '-' : k}">${k}</button>`).join('')}${calcOK(t.drill) ? '<button type="button" class="calc-key" data-calc aria-label="Калькулятор">🧮</button>' : ''}</div>${calcOK(t.drill) ? '' : '<p class="muted calc-off">🧮 Здесь считаем в уме — калькулятор выключен.</p>'}</form>`}
       ${t.hint ? `<details class="hint"><summary>Подсказка</summary><p>${inline(t.hint)}</p></details>` : ''}<div class="fb"></div>` };
   }
   // Один экземпляр задачи: рисует, принимает ответ, вызывает done(ok)
   function runTask(box, t, opt, done) {
     const { html } = taskHTML(t);
     box.innerHTML = html;
+    Calc.allow(calcOK(t.drill));
+    const ck = $('[data-calc]', box); if (ck) ck.onclick = () => Calc.open();
+    Calc.fabOnly(!$('.ans-form', box));
     const fin = ok => {
       $$('.opt', box).forEach(b => { b.disabled = true; if (+b.dataset.k === 0) b.classList.add('right'); });
       const inp = $('.ans-in', box); if (inp) { inp.disabled = true; inp.classList.add(ok ? 'ok' : 'bad'); }
@@ -499,10 +504,10 @@
     const f = new URLSearchParams(location.hash.split('?')[1] || '').get('c') || 'all';
     const list = P.drills.filter(d => f === 'all' || d.course === +f);
     const groups = courses.filter(c => f === 'all' || c.n === +f).map(c => ({ c, ds: list.filter(d => d.course === c.n) })).filter(g => g.ds.length);
-    mount(`<h1>${esc(L.drills.title)}</h1><p class="lead">${esc(L.drills.desc)} Уровень засчитывается за 8 верных из 10 — так зажигаются звёзды ★. Решено задач: ${solved()}.</p>
+    mount(`<h1>${esc(L.drills.title)}</h1><p class="lead">${esc(L.drills.desc)} <span class="d-only">Уровень засчитывается за 8 верных из 10 — так зажигаются звёзды ★.</span> Решено задач: ${solved()}.</p>
       <div class="btn-row"><a class="btn primary" href="#/daily">☀ Разминка дня</a><a class="btn" href="#/drill/mix${f === 'all' ? '' : '?c=' + f}">🎲 Смешанные задачи</a></div>
       <div class="chips">${['all', ...courses.map(c => c.n)].map(s => `<a class="chip" href="#/drills?c=${s}" aria-pressed="${String(s) === f}">${s === 'all' ? 'Все' : 'Курс ' + courseOf(s).roman}</a>`).join('')}</div>
-      ${groups.map(g => `<h2 ${cs(g.c.n)}><span style="color:var(--c)">${g.c.roman}.</span> ${esc(g.c.title)} <small class="muted" style="font:400 15px var(--sans)">${esc(g.c.grade)}</small></h2><div class="grid">${g.ds.map(drillTile).join('')}</div>`).join('')}`, L.drills.title);
+      ${groups.map(g => `<details class="grp" ${cs(g.c.n)} ${f !== 'all' ? 'open' : ''}><summary><span class="r">${g.c.roman}</span><span class="t">${esc(g.c.title)}<small>${esc(g.c.grade)} · ${g.ds.length} ${plural(g.ds.length, ['генератор', 'генератора', 'генераторов'])} · ★ ${g.ds.reduce((s2, d) => s2 + mastered(d.id), 0)}/${g.ds.length * 3}</small></span></summary><div class="grid">${g.ds.map(drillTile).join('')}</div></details>`).join('')}`, L.drills.title);
   };
 
   V.drill = id => {
@@ -541,6 +546,129 @@
     mount(`<div class="narrow"><nav class="crumbs"><a href="#/drills">${esc(L.drills.title)}</a> / <span>Разминка дня</span></nav><h1>Разминка дня</h1><p class="lead">${new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}: пять задач из разных тем, от простой к сложной. Завтра будут новые.</p><div id="act"></div></div>`, 'Разминка дня');
     session($('#act'), i => tasks[i], { n: 5, title: 'Разминка', showDrill: true, onEnd: sc => { const first = S.daily[d0] == null; S.daily[d0] = Math.max(sc, S.daily[d0] || 0); save(); if (first) addXP(20); checkAch(); } });
   };
+
+  /* ——— Калькулятор ——— */
+  // Калькулятор разрешён по умолчанию с курса 3; генератор может переопределить флагом calc.
+  const calcOK = d => !d ? true : d.calc != null ? !!d.calc : d.course >= 3;
+  function calcEval(src, deg, ans) {
+    let s = String(src).toLowerCase().replace(/\s+/g, '').replace(/[−–—]/g, '-').replace(/[×·*]/g, '*').replace(/[÷:]/g, '/').replace(/,/g, '.').replace(/π/g, 'pi').replace(/²/g, '^2').replace(/³/g, '^3').replace(/∛/g, 'cbrt');
+    const open = (s.match(/\(/g) || []).length - (s.match(/\)/g) || []).length; let i = 0; const tr = deg ? Math.PI / 180 : 1;
+    const F = { sin: x => Math.sin(x * tr), cos: x => Math.cos(x * tr), tan: x => { const c = Math.cos(x * tr); return Math.abs(c) < 1e-14 ? NaN : Math.sin(x * tr) / c; }, asin: x => Math.asin(x) / tr, acos: x => Math.acos(x) / tr, atan: x => Math.atan(x) / tr, ln: Math.log, log: Math.log10, lg: Math.log10, sqrt: Math.sqrt, cbrt: Math.cbrt, abs: Math.abs, exp: Math.exp };
+    const fact = n => { if (n < 0 || !Number.isInteger(n) || n > 170) return NaN; let r = 1; for (let k = 2; k <= n; k++) r *= k; return r; };
+    const peek = () => s[i];
+    const startsAtom = c => c && /[\d.(√a-z]/.test(c);
+    function expr() { let v = term(); while (peek() === '+' || peek() === '-') { const o = s[i++]; const r = term(); v = o === '+' ? v + r : v - r; } return v; }
+    function term() { let v = unary(); for (;;) { const c = peek(); if (c === '*' || c === '/') { i++; const r = unary(); v = c === '*' ? v * r : v / r; } else if (startsAtom(c)) v *= unary(); else return v; } }
+    function unary() { if (peek() === '-') { i++; return -unary(); } if (peek() === '+') { i++; return unary(); } return power(); }
+    function power() { const b = postfix(); if (peek() === '^') { i++; return Math.pow(b, unary()); } return b; }
+    function postfix() { let v = atom(); for (;;) { if (peek() === '!') { i++; v = fact(v); } else if (peek() === '%') { i++; v /= 100; } else return v; } }
+    function args() { const out = [expr()]; while (peek() === ';') { i++; out.push(expr()); } if (peek() !== ')') throw 0; i++; return out; }
+    function atom() {
+      const c = peek();
+      if (c === '(') { i++; const v = expr(); if (peek() === ')') i++; return v; }
+      if (c === '√') { i++; return Math.sqrt(power()); }
+      let m = s.slice(i).match(/^\d*\.?\d+(e[+-]?\d+)?/); if (m) { i += m[0].length; return parseFloat(m[0]); }
+      m = s.slice(i).match(/^[a-z]+/); if (!m) throw 0;
+      let name = m[0];
+      // разбор слитных имён: «pie» → pi·e, «ans2» и т. п.
+      const known = ['asin', 'acos', 'atan', 'sqrt', 'cbrt', 'sin', 'cos', 'tan', 'abs', 'exp', 'ans', 'ln', 'log', 'lg', 'pi', 'c', 'e'];
+      name = known.find(k => name.startsWith(k)); if (!name) throw 0;
+      i += name.length;
+      if (name === 'pi') return Math.PI;
+      if (name === 'e') return Math.E;
+      if (name === 'ans') return ans || 0;
+      if (name === 'c') { if (peek() !== '(') throw 0; i++; const [n, k] = args(); return fact(n) / (fact(k) * fact(n - k)); }
+      if (peek() === '(') { i++; const a = args(); return F[name](a[0]); }
+      return F[name](power());
+    }
+    s += ')'.repeat(Math.max(0, open));
+    try { if (!s) return NaN; const v = expr(); if (i !== s.length) return NaN; return v; } catch (e) { return NaN; }
+  }
+  function cfrac(x, maxD) { const sg = x < 0 ? -1 : 1; x = Math.abs(x); let h1 = 1, h0 = 0, k1 = 0, k0 = 1, b = x; for (let it = 0; it < 32; it++) { const a = Math.floor(b); [h1, h0] = [a * h1 + h0, h1]; [k1, k0] = [a * k1 + k0, k1]; if (k1 > maxD) return null; if (Math.abs(x - h1 / k1) < 1e-10 * Math.max(1, x)) return [sg * h1, k1]; const r = b - a; if (r < 1e-12) break; b = 1 / r; } return null; }
+  // Точная форма: дробь, кратное π или корень. Возвращает { tex, txt } или null.
+  function exactForm(x) {
+    if (!isFinite(x) || Number.isInteger(R.round(x, 10)) || Math.abs(x) > 1e9) return null;
+    const fr = cfrac(x, 2000);
+    if (fr) return { tex: R.frac(fr[0], fr[1]), txt: fr[0] + '/' + fr[1] };
+    const fp = cfrac(x / Math.PI, 60);
+    if (fp) { const [p, q] = fp; const num = (p === 1 ? '' : p === -1 ? '-' : p) + '\\pi'; return { tex: q === 1 ? num : (p < 0 ? '-' : '') + '\\frac{' + (Math.abs(p) === 1 ? '' : Math.abs(p)) + '\\pi}{' + q + '}', txt: (p === 1 ? '' : p === -1 ? '-' : p) + 'π' + (q === 1 ? '' : '/' + q) }; }
+    const f2 = cfrac(x * x, 200);
+    if (f2 && f2[1] <= 60) { let [n, q] = f2; let N = n * q; let a = 1; for (let k = 2; k * k <= N; k++) while (N % (k * k) === 0) { N /= k * k; a *= k; } if (N === 1) return null; const g = R.gcd(a, q); a /= g; q /= g; const sg = x < 0 ? '-' : ''; const rad = (a === 1 ? '' : a) + '\\sqrt{' + N + '}'; return { tex: sg + (q === 1 ? rad : '\\frac{' + rad + '}{' + q + '}'), txt: sg + (a === 1 ? '' : a) + '√' + N + (q === 1 ? '' : '/' + q) }; }
+    return null;
+  }
+  const fmtNum = x => { if (!isFinite(x)) return isNaN(x) ? 'ошибка' : (x > 0 ? '∞' : '−∞'); if (Math.abs(x) < 1e-12) return '0'; const a = Math.abs(x); let t = (a >= 1e12 || a < 1e-6) ? x.toExponential(8).replace(/\.?0+e/, 'e') : String(+x.toPrecision(12)); return t.replace('-', '−').replace('.', ','); };
+  const Calc = (() => {
+    let el, fab, inp, res, ex, hist, ins, inv = false, just = false, allowed = true, last = null;
+    const keys = [['inv', '@inv', 'fn'], ['sin', 'sin(', 'fn', 'asin('], ['cos', 'cos(', 'fn', 'acos('], ['tan', 'tan(', 'fn', 'atan('], ['π', 'π', 'fn'],
+      ['ln', 'ln(', 'fn', 'exp('], ['log', 'log(', 'fn', '10^('], ['√', '√(', 'fn', '∛('], ['x²', '^2', 'fn', '^3'], ['xʸ', '^', 'fn'],
+      ['(', '(', 'op'], [')', ')', 'op'], ['n!', '!', 'op'], ['C(n;k)', 'C(', 'op'], [';', ';', 'op'],
+      ['7', '7'], ['8', '8'], ['9', '9'], ['÷', '÷', 'op'], ['⌫', '@del', 'act'],
+      ['4', '4'], ['5', '5'], ['6', '6'], ['×', '×', 'op'], ['AC', '@ac', 'act'],
+      ['1', '1'], ['2', '2'], ['3', '3'], ['−', '−', 'op'], ['Ans', 'Ans', 'fn'],
+      ['0', '0'], [',', ','], ['e', 'e', 'fn'], ['+', '+', 'op'], ['=', '@eq', 'eq']];
+    const invLab = { sin: 'sin⁻¹', cos: 'cos⁻¹', tan: 'tan⁻¹', ln: 'eˣ', log: '10ˣ', '√': '∛', 'x²': 'x³' };
+    const st = () => S.calc = S.calc || { hist: [], deg: true };
+    const ansVal = () => { const h = st().hist; return h.length ? h[0].v : 0; };
+    function update() {
+      const v = calcEval(inp.value, st().deg, ansVal());
+      res.textContent = inp.value ? (isNaN(v) ? '…' : '= ' + fmtNum(v)) : '0';
+      const f = isFinite(v) ? exactForm(v) : null; ex.innerHTML = f ? '= ' + tex('\\displaystyle ' + f.tex) : '';
+      last = isFinite(v) ? { v, f } : null;
+      ins.hidden = !last || !target();
+    }
+    const target = () => { const t = $('.ans-in'); return t && !t.disabled && t.isConnected ? t : null; };
+    function put(txt) {
+      const ops = /^[+−×÷^!;)]|^\^/;
+      if (just) { inp.value = ops.test(txt) ? 'Ans' : ''; just = false; }
+      const p = inp.selectionStart != null && document.activeElement === inp ? inp.selectionStart : inp.value.length;
+      const q = inp.selectionEnd != null && document.activeElement === inp ? inp.selectionEnd : p;
+      inp.value = inp.value.slice(0, p) + txt + inp.value.slice(q);
+      if (!coarse()) { inp.focus(); inp.setSelectionRange(p + txt.length, p + txt.length); }
+      update();
+    }
+    const coarse = () => matchMedia('(pointer: coarse)').matches;
+    function equals() {
+      if (!last) return;
+      const h = st().hist; h.unshift({ e: inp.value, v: last.v }); h.length = Math.min(h.length, 10); save();
+      drawHist(); just = true; res.classList.add('pop'); setTimeout(() => res.classList.remove('pop'), 250);
+    }
+    function drawHist() { hist.innerHTML = st().hist.slice(0, 4).reverse().map((h, k) => `<button type="button" data-h="${st().hist.length > 4 ? st().hist.slice(0, 4).length - 1 - k : st().hist.length - 1 - k}">${esc(h.e)} = <b>${esc(fmtNum(h.v))}</b></button>`).join(''); }
+    function press(b) {
+      const k = b.dataset.k, alt = b.dataset.alt;
+      if (k === '@inv') { inv = !inv; b.classList.toggle('on', inv); $$('[data-alt]', el).forEach(x => { x.textContent = inv ? (invLab[x.dataset.lab] || x.dataset.lab) : x.dataset.lab; }); return; }
+      if (k === '@del') { just = false; inp.value = inp.value.slice(0, -1); update(); return; }
+      if (k === '@ac') { just = false; inp.value = ''; update(); return; }
+      if (k === '@eq') { equals(); return; }
+      put(inv && alt ? alt : k);
+      if (inv && alt) { inv = false; $('[data-k="@inv"]', el).classList.remove('on'); $$('[data-alt]', el).forEach(x => { x.textContent = x.dataset.lab; }); }
+    }
+    function build() {
+      el = document.createElement('div'); el.className = 'calc'; el.id = 'calc'; el.hidden = true; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Калькулятор');
+      el.innerHTML = `<div class="calc-head"><b>🧮 Калькулятор</b><button type="button" class="calc-mode" data-k="@mode" title="Градусы или радианы"></button><button type="button" class="calc-x" aria-label="Закрыть">✕</button></div>
+        <div class="calc-screen"><div class="calc-hist"></div><input class="calc-in" aria-label="Выражение" autocomplete="off" spellcheck="false" placeholder="например 2√3 + sin(30)"><div class="calc-out"><span class="calc-ex"></span><span class="calc-res">0</span></div></div>
+        <button type="button" class="btn primary calc-ins" hidden>↵ Вставить в ответ</button>
+        <div class="calc-keys">${keys.map(([l, k, cl, alt]) => `<button type="button" class="${cl || 'num'}" data-k="${esc(k)}"${alt ? ` data-alt="${esc(alt)}" data-lab="${esc(l)}"` : ''}>${esc(l)}</button>`).join('')}</div>`;
+      document.body.appendChild(el);
+      fab = document.createElement('button'); fab.className = 'calc-fab'; fab.type = 'button'; fab.setAttribute('aria-label', 'Открыть калькулятор'); fab.innerHTML = '<span aria-hidden="true">🧮</span>'; document.body.appendChild(fab);
+      inp = $('.calc-in', el); res = $('.calc-res', el); ex = $('.calc-ex', el); hist = $('.calc-hist', el); ins = $('.calc-ins', el);
+      const mode = $('.calc-mode', el); const showMode = () => { mode.textContent = st().deg ? 'DEG' : 'RAD'; }; showMode();
+      mode.onclick = () => { st().deg = !st().deg; save(); showMode(); update(); };
+      fab.onclick = () => el.hidden ? open() : close();
+      $('.calc-x', el).onclick = close;
+      $('.calc-keys', el).addEventListener('click', e => { const b = e.target.closest('button'); if (b) press(b); });
+      hist.onclick = e => { const b = e.target.closest('[data-h]'); if (!b) return; const h = st().hist[+b.dataset.h]; if (h) { inp.value = h.e; just = false; update(); } };
+      inp.addEventListener('input', () => { just = false; update(); });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); equals(); } if (e.key === 'Escape') close(); });
+      ins.onclick = () => { const t = target(); if (!t || !last) return; const txt = last.f ? last.f.txt : fmtNum(last.v).replace(/^−/, '-'); t.value = txt; close(); t.focus(); };
+      drawHist(); update();
+    }
+    function open() { if (!allowed) return; el.hidden = false; document.body.classList.add('calc-open'); fab.setAttribute('aria-expanded', 'true'); if (coarse()) { inp.readOnly = true; inp.setAttribute('inputmode', 'none'); const tk = $('.task'); if (tk) tk.scrollIntoView({ block: 'start', behavior: 'smooth' }); } else { inp.readOnly = false; inp.focus(); } update(); }
+    function close() { if (!el) return; el.hidden = true; document.body.classList.remove('calc-open'); fab.setAttribute('aria-expanded', 'false'); }
+    function allow(ok) { allowed = ok; if (!fab) return; fab.classList.toggle('off', !ok); if (!ok) close(); }
+    function show(v) { if (fab) fab.hidden = !v; if (!v) close(); }
+    function fabOnly(v) { if (fab) fab.hidden = !v; }
+    return { build, open, close, allow, show, fabOnly };
+  })();
 
   /* ——— Лаборатории ——— */
   const K = { tex, inline, md, esc, R, $, $$, toast };
@@ -777,6 +905,7 @@
   function route() {
     const h = (location.hash || '#/').slice(1).split('?')[0]; const p = h.split('/').filter(Boolean);
     closeSearch(); markDay(); save(); const tw = $('#toasts'); if (tw) tw.innerHTML = '';
+    Calc.show(p.length > 0); Calc.allow(!(p[0] === 'tests' && p[1] && (courseOf(+p[1]) || {}).n <= 2));
     try {
       if (!p.length) V.home();
       else if (p[0] === 'c') V.course(p[1]);
@@ -797,6 +926,7 @@
 
   /* ——— Запуск ——— */
   document.addEventListener('DOMContentLoaded', () => {
+    Calc.build();
     $('#searchBtn').onclick = openSearch;
     const ts = $('#tabSearch'); if (ts) ts.onclick = e => { e.preventDefault(); openSearch(); };
     $('#themeBtn').onclick = toggleTheme;
@@ -817,5 +947,5 @@
     window.addEventListener('hashchange', route);
     route();
   });
-  window.EduEngine = { md, inline, tex, Q, CARDS, EVENTS, state: S, R, evalExpr, checkAnswer, genTask };
+  window.EduEngine = { md, inline, tex, Q, CARDS, EVENTS, state: S, R, evalExpr, checkAnswer, genTask, calcEval, exactForm, Calc };
 })();

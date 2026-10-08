@@ -725,5 +725,22 @@
     if (lv === 2) return R.int(0, 1) ? { q: 'Правильная четырёхугольная пирамида: сторона основания ' + a + ', высота ' + hh + '. Найдите апофему.', a: m, kb: 'numeric', sol: '$\\sqrt{' + hh + '^2 + ' + half + '^2}$' } : { q: 'Правильная четырёхугольная пирамида: сторона основания ' + a + ', апофема ' + m + '. Найдите боковую поверхность.', a: 2 * a * m, kb: 'numeric', sol: '$\\frac{1}{2} \\cdot ' + 4 * a + ' \\cdot ' + m + '$' };
     return { q: 'Правильная четырёхугольная пирамида: сторона основания ' + a + ', апофема ' + m + '. Найдите объём.', a: a * a * hh / 3, kb: 'numeric', sol: 'Высота $\\sqrt{' + m + '^2 - ' + half + '^2} = ' + hh + '$, $V = \\frac{1}{3} \\cdot ' + a * a + ' \\cdot ' + hh + '$' };
   }, 'пирамида призма апофема');
+  /* ——— Финансы и термины ——— */
+  D(5, 'finance', 'd-finance', '🏦', 'Финансовая математика', 'Простые и сложные проценты, эффективная ставка, кредит. Ответ до сотых.', ['Простые и сложные', 'Эффективная ставка и удвоение', 'Ежемесячный платёж'], (lv, R) => {
+    if (lv === 1) { const S = R.int(2, 40) * 100, r = R.pick([2, 3, 4, 5, 6, 8, 10]), t = R.int(2, 8), cmp = R.int(0, 1); const v = cmp ? S * (1 + r / 100) ** t : S * (1 + r * t / 100); return { q: 'Вклад ' + S + ' € под ' + r + '% годовых, ' + (cmp ? 'сложные' : 'простые') + ' проценты. Сколько будет через ' + t + ' лет?', a: R.round(v, 2), tol: 0.011, show: R.num(R.round(v, 2)) + ' €', unit: '€', kb: 'decimal', sol: cmp ? '$' + S + ' \\cdot ' + R.tn(1 + r / 100) + '^{' + t + '}$' : '$' + S + '(1 + ' + R.tn(r / 100) + ' \\cdot ' + t + ')$' }; }
+    if (lv === 2) { const r = R.pick([3, 4, 5, 6, 8, 9, 12]); if (R.int(0, 1)) { const v = 100 * ((1 + r / 1200) ** 12 - 1); return { q: 'Ставка ' + r + '% годовых, проценты начисляются ежемесячно. Найдите эффективную годовую ставку (в %, до сотых).', a: R.round(v, 4), tol: 0.011, show: R.num(R.round(v, 2)) + '%', unit: '%', kb: 'decimal', sol: '$\\left(1 + \\frac{' + R.tn(r / 100) + '}{12}\\right)^{12} - 1$' }; } const t = Math.ceil(Math.log(2) / Math.log(1 + r / 100)); return { q: 'Через сколько полных лет вклад под ' + r + '% годовых (сложные проценты) впервые станет больше чем вдвое?', a: t, unit: 'лет', kb: 'numeric', sol: '$t > \\frac{\\ln 2}{\\ln ' + R.tn(1 + r / 100) + '} \\approx ' + R.tn(R.round(Math.log(2) / Math.log(1 + r / 100), 2)) + '$ (правило 72: ' + R.tn(R.round(72 / r, 1)) + ')' }; }
+    const S = R.int(2, 40) * 500, r = R.pick([3, 4, 5, 6, 7.2, 9, 12]), y = R.int(1, 10); const i = r / 1200, n = 12 * y; const A = S * i / (1 - (1 + i) ** -n);
+    return { q: 'Кредит ' + S + ' € на ' + y + ' ' + (y === 1 ? 'год' : y < 5 ? 'года' : 'лет') + ' под ' + R.num(r) + '% годовых, равные ежемесячные платежи. Найдите платёж (до сотых).', a: R.round(A, 2), tol: 0.011, show: R.num(R.round(A, 2)) + ' €', unit: '€', kb: 'decimal', sol: '$i = ' + R.tn(R.round(i, 6)) + '$, $n = ' + n + '$, $A = ' + S + ' \\cdot \\frac{i}{1 - (1 + i)^{-' + n + '}}$' };
+  }, 'кредит проценты вклад инфляция');
+
+  // Эстонские термины: пары собираются из строк «По-эстонски» всех уроков
+  const TERMS = (() => { const seen = new Set(), out = []; for (const l of PLATFORM.lessons) for (const m of l.body.matchAll(/^>e\s+(.*)$/gm)) { let t = m[1]; const k = t.indexOf('Термины:'); if (k >= 0) t = t.slice(k + 8); for (const ch of t.replace(/\.$/, '').split(/,\s+/)) { const p = ch.split(' — '); if (p.length !== 2) continue; const ru = p[0].trim(), et = p[1].trim(); if (!/[а-яё]/i.test(ru) || /[а-яё]/i.test(et) || ru.length > 40 || et.length > 45 || /\$/.test(ru + et) || seen.has(ru) || seen.has('et:' + et)) continue; seen.add(ru); seen.add('et:' + et); out.push({ ru, et, c: l.course }); } } return out; })();
+  PLATFORM.estTerms = TERMS;
+  D(5, null, 'd-terms', '🇪🇪', 'Термины по-эстонски', 'Математические термины всех курсов: ' + TERMS.length + ' пар «русский — эстонский».', ['Курсы I–IV: рус → эст', 'Курсы V–VIII: рус → эст', 'Все курсы: эст → рус'], (lv, R) => {
+    const pool = lv === 1 ? TERMS.filter(t => t.c <= 4) : lv === 2 ? TERMS.filter(t => t.c >= 5) : TERMS;
+    const t = R.pick(pool); const others = R.sample(pool.filter(x => x !== t), 3);
+    if (lv < 3) return { q: 'Как по-эстонски «' + t.ru + '»?', opts: [t.et, ...others.map(x => x.et)], sol: t.ru + ' — **' + t.et + '**' };
+    return { q: 'Что означает «' + t.et + '»?', opts: [t.ru, ...others.map(x => x.ru)], sol: t.et + ' — **' + t.ru + '**' };
+  }, 'эстонский термины eesti keel');
 })();
 

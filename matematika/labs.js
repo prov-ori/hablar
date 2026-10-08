@@ -373,4 +373,26 @@
     mode.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { const k = +b.dataset.r; if (!k) { st.n = 0; st.cnt = {}; } const two = mode.querySelector('select').value === '2'; for (let i = 0; i < k; i++) { const x = 1 + Math.floor(Math.random() * 6) + (two ? 1 + Math.floor(Math.random() * 6) : 0); st.cnt[x] = (st.cnt[x] || 0) + 1; st.n++; } s.redraw(); });
     el.appendChild(s.ro); s.redraw();
   }, 'вероятность кубик частота закон больших чисел');
+  /* 17. Кредитный калькулятор */
+  L(5, 'finance', 'lab-loan', '🏦', 'Кредитный калькулятор', 'Сумма, ставка и срок: ежемесячный платёж, переплата и как тает долг.', (el, K) => {
+    let P;
+    const s = setup(el, ro => {
+      const S = v.S, i = v.r / 100 / 12, n = v.y * 12;
+      const A = i ? S * i / (1 - (1 + i) ** -n) : S / n;
+      P.xmin = -0.03 * v.y; P.xmax = v.y * 1.04; P.ymin = -S * 0.03; P.ymax = S * 1.12; P.size(); P.clear(); const c = P.c, ctx = P.ctx;
+      ctx.strokeStyle = c.line; ctx.lineWidth = 1; ctx.fillStyle = c.muted; ctx.font = '12px system-ui'; ctx.textAlign = 'center';
+      const stepY = v.y <= 10 ? 1 : 5; for (let t = 0; t <= v.y; t += stepY) { ctx.beginPath(); ctx.moveTo(P.X(t), 0); ctx.lineTo(P.X(t), P.h - 18); ctx.stroke(); ctx.fillText(t + (t ? ' г.' : ''), P.X(t), P.h - 4); }
+      ctx.textAlign = 'left'; for (let q = 1; q <= 4; q++) { const y = S * q / 4; ctx.beginPath(); ctx.moveTo(0, P.Y(y)); ctx.lineTo(P.w, P.Y(y)); ctx.stroke(); ctx.fillText(Math.round(y).toLocaleString('ru-RU') + ' €', 4, P.Y(y) - 3); }
+      let bal = S, paidInt = 0; const pb = [[0, S]], pi = [[0, 0]];
+      for (let m = 1; m <= n; m++) { const int = bal * i; paidInt += int; bal -= A - int; if (m % 3 === 0 || m === n) { pb.push([m / 12, Math.max(0, bal)]); pi.push([m / 12, paidInt]); } }
+      P.poly([...pb, [v.y, 0], [0, 0]], alpha(c.acc, .15), null);
+      const line = (pts, col, w) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); pts.forEach(([x, y], k) => k ? ctx.lineTo(P.X(x), P.Y(y)) : ctx.moveTo(P.X(x), P.Y(y))); ctx.stroke(); };
+      line(pb, c.acc, 3); line(pi, c.bad, 3);
+      const total = A * n;
+      ro.innerHTML = '<div class="bigf">' + K.tex('A = ' + tn(S, 0) + ' \\cdot \\frac{' + tn(i, 5) + '}{1 - ' + tn(1 + i, 5) + '^{-' + n + '}} \\approx ' + tn(A, 2) + '\\text{ €}') + '</div>Ежемесячный платёж <b>' + fmt(A, 2) + ' €</b>, всего выплатите <b>' + fmt(total, 0) + ' €</b>, из них проценты (переплата) <b style="color:var(--bad)">' + fmt(total - S, 0) + ' €</b> — это ' + fmt(100 * (total - S) / S, 1) + '% от суммы кредита.<br>Синяя линия — остаток долга, красная — уже выплаченные проценты. Попробуйте удвоить срок: платёж уменьшится, а переплата вырастет.';
+    });
+    P = plane(el, { xmin: 0, xmax: 5, ymin: 0, ymax: 11000, ratio: 0.5, maxH: 340 });
+    const v = controls(el, [['S', 'Сумма, €', 1000, 50000, 500, 10000], ['r', 'Ставка, % годовых', 0, 20, 0.5, 6], ['y', 'Срок, лет', 1, 30, 1, 5]], K, s.redraw);
+    el.appendChild(s.ro); s.redraw();
+  }, 'кредит аннуитет проценты калькулятор');
 })();

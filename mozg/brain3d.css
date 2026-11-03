@@ -1,0 +1,64 @@
+/* 3D- и МРТ-атласы */
+.b3d-root { font-family: var(--sans); font-size: 15px; line-height: 1.45; }
+.b3d { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: 14px; align-items: start; }
+.b3d-stage { position: relative; width: 100%; height: clamp(360px, 52vw, 640px); border-radius: 14px; overflow: hidden; background: radial-gradient(120% 90% at 50% 38%, #3a3340 0%, #1c1822 55%, #100e14 100%); border: 1px solid var(--line); touch-action: none; }
+.b3d-stage:fullscreen { height: 100%; border-radius: 0; }
+.b3d-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; outline: none; border: 0; background: none; border-radius: 0; }
+.b3d-stage canvas:active { cursor: grabbing; }
+.b3d-hud { position: absolute; display: flex; flex-wrap: wrap; gap: 4px; z-index: 2; }
+.b3d-views { left: 8px; top: 8px; max-width: calc(100% - 100px); }
+.b3d-tools { right: 8px; top: 8px; }
+.b3d-hud button { border: 1px solid rgba(255, 255, 255, .22); background: rgba(24, 20, 30, .62); backdrop-filter: blur(6px); color: #f1ebf3; border-radius: 8px; padding: 5px 9px; font: 600 12px var(--sans); cursor: pointer; min-height: 30px; }
+.b3d-hud button:hover { background: rgba(60, 50, 72, .8); }
+.b3d-hud button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+.b3d-tip { position: absolute; z-index: 3; pointer-events: none; background: rgba(20, 16, 26, .88); color: #fff; padding: 4px 9px; border-radius: 7px; font-size: 13px; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.b3d-tag { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; background: rgba(255, 207, 90, .95); color: #231b08; padding: 3px 9px; border-radius: 7px; font: 700 13px var(--sans); white-space: nowrap; box-shadow: 0 2px 10px rgba(0, 0, 0, .35); }
+.b3d-msg { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 4; padding: 8px 14px; border-radius: 10px; font: 700 14px var(--sans); color: #fff; background: #333; max-width: 90%; text-align: center; }
+.b3d-msg.ok { background: #1f7a4d; } .b3d-msg.bad { background: #b3261e; }
+.b3d-side { min-width: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; }
+.b3d-tabs { display: flex; border-bottom: 1px solid var(--line); background: var(--sunken); }
+.b3d-tabs button { flex: 1; border: 0; background: none; padding: 11px 4px; font: 600 13px var(--sans); color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; min-height: 44px; }
+.b3d-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); background: var(--surface); }
+.b3d-pane { padding: 14px; max-height: 460px; overflow: auto; }
+.b3d-pane h3 { margin: 0 0 2px; font: 700 19px var(--serif); }
+.b3d-pane h4 { margin: 14px 0 6px; font: 700 12px var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.b3d-pane h4:first-child { margin-top: 0; }
+.b3d-lat { margin: 0 0 8px; font-style: italic; color: var(--muted); font-size: 14px; }
+.b3d-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.b3d-badges span { border: 1px solid var(--line); border-left: 4px solid var(--c, var(--muted)); padding: 2px 8px; border-radius: 6px; font-size: 12.5px; }
+.b3d-pane dl { margin: 0 0 12px; } .b3d-pane dt { font: 700 12px var(--sans); text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin-top: 10px; }
+.b3d-pane dd { margin: 2px 0 0; }
+.b3d-note { font-size: 12.5px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; }
+.b3d-search { width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); font: 15px var(--sans); margin-bottom: 8px; }
+.b3d-list h4 { border-left: 4px solid var(--c); padding-left: 8px; }
+.b3d-item { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 7px 8px; border-radius: 8px; color: var(--ink); font: 14px var(--sans); cursor: pointer; min-height: 36px; }
+.b3d-item:hover { background: var(--sunken); }
+.b3d-checks { display: grid; gap: 4px; margin-bottom: 6px; } .b3d-checks label { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.b3d-seg { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+.b3d-seg button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: 600 13px var(--sans); cursor: pointer; min-height: 36px; }
+.b3d-seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.b3d-range { display: grid; gap: 4px; margin: 8px 0; font-size: 13.5px; color: var(--muted); } .b3d-range input { width: 100%; }
+.b3d-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px; margin: 4px 0 8px; } .b3d-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
+.b3d-q { font-size: 16px; margin: 10px 0; } .b3d-target { font-weight: 700; color: var(--accent); }
+.b3d-opts { display: grid; gap: 6px; } .b3d-opts .btn { justify-content: flex-start; text-align: left; border-radius: 12px; }
+.b3d-opts .btn.ok { background: var(--ok-soft); border-color: var(--ok); } .b3d-opts .btn.bad { background: var(--bad-soft); border-color: var(--bad); }
+.b3d-link { border: 0; background: none; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
+.b3d-load { display: grid; place-items: center; gap: 12px; padding: 60px 0; color: var(--muted); } .b3d-load p { margin: 0; }
+.b3d-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: b3dspin 1s linear infinite; }
+@keyframes b3dspin { to { transform: rotate(360deg); } }
+.b3d-err { padding: 14px; border: 1px solid var(--bad); background: var(--bad-soft); border-radius: 10px; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+/* МРТ */
+.mri-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.mri figure { margin: 0; } .mri canvas { width: 100%; height: auto; background: #000; border-radius: 10px; image-rendering: auto; cursor: crosshair; border: 1px solid var(--line); }
+.mri figcaption { font-size: 13px; margin-top: 4px; }
+.mri-info { grid-column: 1 / -1; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--surface); min-height: 86px; } .mri-info h3 { margin: 0; font: 700 18px var(--serif); } .mri-info p { margin: 4px 0; }
+.mri-ctl { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 20px; margin-top: 12px; }
+.wide-lab:has(.b3d-root) { max-width: 1180px; }
+.lab-slot .b3d { grid-template-columns: 1fr; } .lab-slot .b3d-stage { height: clamp(320px, 56vw, 480px); }
+@media (max-width: 860px) {
+  .b3d { grid-template-columns: 1fr; }
+  .b3d-stage { height: min(112vw, 70vh); min-height: 320px; }
+  .b3d-pane { max-height: none; }
+  .mri-grid { grid-template-columns: 1fr; }
+}

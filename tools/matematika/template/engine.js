@@ -48,6 +48,7 @@
   const byId = {}; P.lessons.forEach((l, i) => { byId[l.id] = l; l.idx = i; });
   const drillById = {}; P.drills.forEach(d => { drillById[d.id] = d; });
   const labById = {}; P.labs.forEach(d => { labById[d.id] = d; });
+  const LABS = P.labs.filter(d => !d.embed); // embed: true — лаборатория только для вставки в урок (@lab id)
   const Q = []; // общий банк вопросов
   P.lessons.forEach(l => (l.quiz || []).forEach((q, i) => Q.push({ id: l.id + '#' + i, q: q[0], a: q[1], c: q[2], e: q[3] || '', lesson: l.id, course: l.course })));
   const CARDS = [];
@@ -68,7 +69,7 @@
     return esc(s)
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[\s(«])\*(?!\s)(.+?)\*(?=[\s.,;:!?)»]|$)/g, '$1<em>$2</em>')
-      .replace(/\[\[(.+?)\]\]/g, (m, t) => '<a href="#/glossary?q=' + encodeURIComponent(t) + '">' + t + '</a>')
+      .replace(/\[\[(.+?)\]\]/g, (m, t) => { const [k, s] = t.split('|'); return '<a href="#/glossary?q=' + encodeURIComponent(k) + '">' + (s || k) + '</a>'; })
       .replace(/\[(.+?)\]\(#(.+?)\)/g, '<a href="#$2">$1</a>');
   }
   function inline(s) {
@@ -150,7 +151,7 @@
       ['daily', '☀️', 'Разминка', 'Пройти разминку дня', () => Object.keys(S.daily).length >= 1],
       ['daily7', '📅', 'Режим', 'Пройти разминку 7 разных дней', () => Object.keys(S.daily).length >= 7]
     ] : []),
-    ...(P.labs.length ? [['labs', '🔬', 'Экспериментатор', 'Открыть 5 лабораторий', () => Object.keys(S.visits).filter(k => k.startsWith('lab:')).length >= Math.min(5, P.labs.length)]] : []),
+    ...(LABS.length ? [['labs', '🔬', 'Экспериментатор', 'Открыть 5 лабораторий', () => Object.keys(S.visits).filter(k => k.startsWith('lab:')).length >= Math.min(5, LABS.length)]] : []),
     ...(P.places.length ? [['places', '◆', 'Краевед', 'Открыть все места на карте', () => Object.keys(S.visits).filter(k => k.startsWith('pl:')).length >= P.places.length]] : []),
     ['streak3', '🔥', 'Три дня подряд', 'Заниматься 3 дня подряд', () => streak() >= 3],
     ['streak7', '🌋', 'Неделя', 'Заниматься 7 дней подряд', () => streak() >= 7]
@@ -211,7 +212,7 @@
         <div class="stat"><b>${streak()}</b><span>${plural(streak(), ['день', 'дня', 'дней'])} подряд</span></div>
         <div class="stat opt"><b>${dueCards().length}</b><span>карточек к повторению</span></div>
       </div>
-      ${P.labs.length ? `<h2>${esc(L.labs.title)}</h2><p class="muted d-only">${esc(L.labs.desc)}</p><div class="grid rail">${P.labs.slice(0, 8).map(labTile).join('')}</div><p><a href="#/labs">Все ${P.labs.length} ${plural(P.labs.length, ['лаборатория', 'лаборатории', 'лабораторий'])} ›</a></p>` : ''}
+      ${LABS.length ? `<h2>${esc(L.labs.title)}</h2><p class="muted d-only">${esc(L.labs.desc)}</p><div class="grid rail">${LABS.slice(0, 8).map(labTile).join('')}</div><p><a href="#/labs">Все ${LABS.length} ${plural(LABS.length, ['лаборатория', 'лаборатории', 'лабораторий'])} ›</a></p>` : ''}
       ${P.drills.length ? `<h2>${esc(L.drills.title)}</h2><p class="muted">${P.drills.length} генераторов задач. ${esc(L.drills.desc)}</p><div class="chips">${courses.map(c => `<a class="chip" href="#/drills?c=${c.n}" ${cs(c.n)}>${c.roman}. ${esc(c.title)} · ${P.drills.filter(d => d.course === c.n).length}</a>`).join('')}</div>` : ''}
       <h2>Тренажёры</h2>
       <div class="grid rail">${trainTiles().slice(0, 6).join('')}</div>
@@ -239,7 +240,7 @@
 
   V.course = n => {
     n = +n; const c = courseOf(n); if (!c) return V.notfound();
-    const ls = lessonsOf(n), d = doneIn(n), dr = P.drills.filter(x => x.course === n), lb = P.labs.filter(x => x.course === n);
+    const ls = lessonsOf(n), d = doneIn(n), dr = P.drills.filter(x => x.course === n), lb = LABS.filter(x => x.course === n);
     mount(`<div class="narrow" ${cs(n)}>
       <nav class="crumbs"><a href="#/">Главная</a> / <span>Курс ${c.roman}</span></nav>
       <header class="course-head"><span class="roman">Курс ${c.roman} · ${esc(c.grade)}</span><h1>${esc(c.title)}</h1><p class="lead">${esc(c.short)}</p></header>
@@ -671,7 +672,7 @@
   })();
 
   /* ——— Лаборатории ——— */
-  const K = { tex, inline, md, esc, R, $, $$, toast };
+  const K = { tex, inline, md, esc, R, $, $$, toast, addXP, S, save, byId, shuffle, pick, plural };
   function mountLabs(root) {
     $$('.lab-slot', root).forEach(el => {
       const lab = labById[el.dataset.lab]; if (!lab) return;
@@ -680,7 +681,7 @@
     });
   }
   V.labs = () => mount(`<h1>${esc(L.labs.title)}</h1><p class="lead">${esc(L.labs.desc)}</p>
-    ${courses.map(c => { const ls = P.labs.filter(x => x.course === c.n); return ls.length ? `<h2 ${cs(c.n)}><span style="color:var(--c)">${c.roman}.</span> ${esc(c.title)}</h2><div class="grid">${ls.map(labTile).join('')}</div>` : ''; }).join('')}`, L.labs.title);
+    ${courses.map(c => { const ls = LABS.filter(x => x.course === c.n); return ls.length ? `<h2 ${cs(c.n)}><span style="color:var(--c)">${c.roman}.</span> ${esc(c.title)}</h2><div class="grid">${ls.map(labTile).join('')}</div>` : ''; }).join('')}`, L.labs.title);
   V.lab = id => {
     const lab = labById[id]; if (!lab) return V.notfound();
     S.visits['lab:' + id] = 1; save();
@@ -884,11 +885,11 @@
   const IDX = [];
   P.lessons.forEach(l => IDX.push({ t: l.title, s: 'Урок · курс ' + courseOf(l.course).roman, h: '#/l/' + l.id, x: (l.title + ' ' + (l.sub || '') + ' ' + strip(l.body)).toLowerCase() }));
   P.drills.forEach(d => IDX.push({ t: d.title, s: L.drills.title + ' · курс ' + (courseOf(d.course) || {}).roman, h: '#/drill/' + d.id, x: (d.title + ' ' + (d.desc || '') + ' ' + (d.tags || '')).toLowerCase() }));
-  P.labs.forEach(d => IDX.push({ t: d.title, s: L.labs.title, h: '#/lab/' + d.id, x: (d.title + ' ' + (d.desc || '') + ' ' + (d.tags || '')).toLowerCase() }));
+  LABS.forEach(d => IDX.push({ t: d.title, s: L.labs.title, h: '#/lab/' + d.id, x: (d.title + ' ' + (d.desc || '') + ' ' + (d.tags || '')).toLowerCase() }));
   P.authors.forEach(a => IDX.push({ t: a.name, s: C.people.one + ' · ' + a.years, h: a.lesson ? '#/l/' + a.lesson : '#/authors', x: (a.name + ' ' + a.note).toLowerCase() }));
   P.glossary.forEach(g => IDX.push({ t: strip(g[0]), s: 'Термин', h: '#/glossary?q=' + encodeURIComponent(g[0]), x: strip(g[0] + ' ' + g[1]).toLowerCase() }));
   P.works.forEach(w => IDX.push({ t: strip(w[1]), s: L.pairs.item + ' · ' + strip(w[0]), h: '#/train/pairs', x: strip(w[0] + ' ' + w[1]).toLowerCase() }));
-  [[L.tests.title, '#/tests'], [L.timeline.title, '#/timeline'], ['Тренажёры', '#/train'], ['Мой прогресс', '#/me'], ...(P.drills.length ? [[L.drills.title, '#/drills'], ['Разминка дня', '#/daily']] : []), ...(P.labs.length ? [[L.labs.title, '#/labs']] : []), ...(P.places.length ? [[C.places.title, '#/' + PL]] : [])].forEach(([t, h]) => IDX.push({ t, s: 'Раздел', h, x: t.toLowerCase() }));
+  [[L.tests.title, '#/tests'], [L.timeline.title, '#/timeline'], ['Тренажёры', '#/train'], ['Мой прогресс', '#/me'], ...(P.drills.length ? [[L.drills.title, '#/drills'], ['Разминка дня', '#/daily']] : []), ...(LABS.length ? [[L.labs.title, '#/labs']] : []), ...(P.places.length ? [[C.places.title, '#/' + PL]] : [])].forEach(([t, h]) => IDX.push({ t, s: 'Раздел', h, x: t.toLowerCase() }));
   let act = 0;
   function search(q) {
     q = q.trim().toLowerCase(); const ul = $('#sres');
